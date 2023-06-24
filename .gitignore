@@ -1,0 +1,12 @@
+
+compile_commands.json
+
+.cache/
+
+build/
+
+*.user
+
+x64/
+
+.vs/
