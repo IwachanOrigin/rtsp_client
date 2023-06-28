@@ -20,6 +20,8 @@ set_source_files_properties(videoPS.hlsl
 add_custom_target(hlsl SOURCES ${hlsl_srcs})
 
 set(main_src
+  ffmpegdecoder.h
+  ffmpegdecoder.cpp
   dx11manager.cpp
   dx11manager.h
   dxhelper.h
