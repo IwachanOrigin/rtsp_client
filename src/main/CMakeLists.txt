@@ -36,7 +36,6 @@ set(main_src
   stdafx.cpp
   stdafx.h
   timer.h
-  utils.h
   win32messagehandler.cpp
   win32messagehandler.h
 )
