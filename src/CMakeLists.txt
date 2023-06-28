@@ -1,3 +1,4 @@
+
 cmake_minimum_required(VERSION 3.10)
 
 # set the project name
@@ -22,26 +23,24 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(GLOBAL PROPERTY AUTOGEN_TARGETS_FOLDER AutoGenFiles)
 set_property(GLOBAL PROPERTY AUTOGEN_SOURCE_GROUP AutoGenFiles)
 
-# Filter
-source_group("Ui Files" FILES ${UI_FILES})
-source_group("Qrc Files" FILES ${QRC_FILES})
-
-# Set the live555 bin path
-set(LIVE555_PATH ${CMAKE_CURRENT_SOURCE_DIR}/assets/live555)
-set(LIVE555_PATH_BIN ${LIVE555_PATH}/bin)
-set(LIVE555_PATH_INCLUDE ${LIVE555_PATH}/include)
-set(LIVE555_PATH_LIB ${LIVE555_PATH}/lib)
-
-# set cmake prefix path
-set(CMAKE_PREFIX_PATH ${LIVE555_PATH_LIB}/cmake/live555)
-
-# Find the OpenCV
-find_package(live555 REQUIRED)
+# Set the ffmpeg bin path
+set(FFMPEG_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../_assets/ffmpeg-n6.0-latest-win64-lgpl-shared-6.0)
+set(FFMPEG_PATH_BIN ${FFMPEG_PATH}/bin)
+set(FFMPEG_PATH_INC ${FFMPEG_PATH}/include)
+set(FFMPEG_PATH_LIB ${FFMPEG_PATH}/lib)
 
 # Set up the copy dll list
-set(EXTERNAL_DLLS ${LIVE555_PATH_BIN}/Release/live555.dll)
+set(EXTERNAL_DLLS
+  ${FFMPEG_PATH_BIN}/avcodec-60.dll
+  ${FFMPEG_PATH_BIN}/avdevice-60.dll
+  ${FFMPEG_PATH_BIN}/avfilter-9.dll
+  ${FFMPEG_PATH_BIN}/avformat-60.dll
+  ${FFMPEG_PATH_BIN}/avutil-58.dll
+  ${FFMPEG_PATH_BIN}/swresample-4.dll
+  ${FFMPEG_PATH_BIN}/swscale-7.dll
+)
 
-# Set the live555 include directory
-include_directories(${LIVE555_PATH_INCLUDE})
+# Set the opencv include directory
+include_directories(${FFMPEG_PATH_INC})
 
 add_subdirectory(main)

@@ -1,18 +1,46 @@
 
+set(hlsl_srcs
+  common.fxh
+  videoVS.hlsl
+  videoPS.hlsl
+)
+
+# options for shader debug mode:  /Zi /Zss /Od /FdColorConvPS.pdb
+set_source_files_properties(videoVS.hlsl
+  PROPERTIES VS_SHADER_FLAGS "/Vng_videoVS /Fh\"${CMAKE_CURRENT_SOURCE_DIR}/videoVS.h\""
+  VS_SHADER_TYPE Vertex
+  VS_SHADER_MODEL 4.0
+  VS_SHADER_ENTRYPOINT VS )
+set_source_files_properties(videoPS.hlsl
+  PROPERTIES VS_SHADER_FLAGS "/Vng_videoPS /Fh\"${CMAKE_CURRENT_SOURCE_DIR}/videoPS.h\""
+  VS_SHADER_TYPE Pixel
+  VS_SHADER_MODEL 4.0
+  VS_SHADER_ENTRYPOINT PS )
+
+add_custom_target(hlsl SOURCES ${hlsl_srcs})
+
 set(main_src
+  dx11manager.cpp
+  dx11manager.h
+  dxhelper.h
   main.cpp
+  mesh.cpp
+  mesh.h
+  pipeline.cpp
+  pipeline.h
+  SimpleMath.cpp
+  SimpleMath.h
+  SimpleMath.inl
+  stdafx.cpp
+  stdafx.h
+  timer.h
+  utils.h
+  win32messagehandler.cpp
+  win32messagehandler.h
 )
 
-add_executable(
-  ${PROJECT_NAME}
-  ${main_src}
-)
-
-# Link
-target_link_libraries(
-  ${PROJECT_NAME}
-  ${LIVE555_PATH_LIB}/Release/live555.lib
-)
+add_executable(${PROJECT_NAME} ${main_src})
+add_dependencies(${PROJECT_NAME} hlsl)
 
 # Copy dlls
 foreach(DLL IN LISTS EXTERNAL_DLLS)
@@ -24,7 +52,7 @@ foreach(DLL IN LISTS EXTERNAL_DLLS)
     TARGET ${PROJECT_NAME}
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy "${DLL}" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${DLL_FILENAME}"
-    COMMENT "Copying ${DLL_FILENAME} to output directory."
+    COMMENT "Copying external DLL to output directory"
   )
 endforeach()
 
