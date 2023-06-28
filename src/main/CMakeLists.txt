@@ -43,6 +43,19 @@ set(main_src
 add_executable(${PROJECT_NAME} ${main_src})
 add_dependencies(${PROJECT_NAME} hlsl)
 
+# Link
+target_link_libraries(
+  ${PROJECT_NAME}
+  ${FFMPEG_PATH_LIB}/avcodec.lib
+  ${FFMPEG_PATH_LIB}/avdevice.lib
+  ${FFMPEG_PATH_LIB}/avfilter.lib
+  ${FFMPEG_PATH_LIB}/avformat.lib
+  ${FFMPEG_PATH_LIB}/avutil.lib
+  ${FFMPEG_PATH_LIB}/swresample.lib
+  ${FFMPEG_PATH_LIB}/swscale.lib
+)
+
+
 # Copy dlls
 foreach(DLL IN LISTS EXTERNAL_DLLS)
   # Get the file name of the DLL
