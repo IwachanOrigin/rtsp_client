@@ -32,6 +32,7 @@ set(main_src
   SimpleMath.cpp
   SimpleMath.h
   SimpleMath.inl
+  stringhelper.h
   stdafx.cpp
   stdafx.h
   timer.h

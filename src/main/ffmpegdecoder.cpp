@@ -1,5 +1,6 @@
 
 #include "ffmpegdecoder.h"
+#include "stringhelper.h"
 
 #include <iostream>
 #include <chrono>
@@ -45,8 +46,10 @@ FFMPEGDecoder::~FFMPEGDecoder()
 
 int FFMPEGDecoder::openInputFile(const std::wstring url)
 {
+  // convert wstring to string
+  std::string strURL = wstringToString(url);
   // Open video file or url
-  int ret = avformat_open_input(&m_fmtCtx, url.data(), nullptr, nullptr);
+  int ret = avformat_open_input(&m_fmtCtx, strURL.c_str(), nullptr, nullptr);
   if (ret < 0)
   {
     std::cerr << "Failed to open video file." << std::endl;
@@ -77,7 +80,7 @@ int FFMPEGDecoder::openInputFile(const std::wstring url)
   }
 
   // Copy to m_fmtCtx that length, bit rate, stream format etc...
-  av_dump_format(m_fmtCtx, 0, m_url.toStdString().c_str(), 0);
+  av_dump_format(m_fmtCtx, 0, strURL.c_str(), 0);
 
   // ---------------------------------------------------------------------
   //                              DECODER
@@ -189,7 +192,7 @@ void FFMPEGDecoder::run()
           }
           // convert to yuv420p to rgb32
           sws_scale(
-            img_ctx
+            m_imgCtx
             , (const uint8_t* const*)m_yuvFrame->data
             , m_yuvFrame->linesize
             , 0
@@ -220,10 +223,10 @@ void FFMPEGDecoder::run()
   {
     av_frame_free(&m_rgbFrame);
   }
-  if (m_codecCtx)
+  if (m_videoCodecCtx)
   {
-    avcodec_free_context(&m_codecCtx);
-    avcodec_close(m_codecCtx);
+    avcodec_free_context(&m_videoCodecCtx);
+    avcodec_close(m_videoCodecCtx);
   }
   if (m_fmtCtx)
   {
