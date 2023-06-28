@@ -24,7 +24,6 @@ set(main_src
   ffmpegdecoder.cpp
   dx11manager.cpp
   dx11manager.h
-  dxhelper.h
   main.cpp
   mesh.cpp
   mesh.h
