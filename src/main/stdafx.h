@@ -25,12 +25,6 @@
 #include <shlobj.h>
 #include <shlwapi.h>
 #include <tchar.h>
-#include <wmcodecdsp.h>
-
-#include <mfapi.h>
-#include <mfidl.h>
-#include <mferror.h>
-#include <mfreadwrite.h>
 
 #include <d3d11.h>
 

@@ -24,7 +24,7 @@ set_property(GLOBAL PROPERTY AUTOGEN_TARGETS_FOLDER AutoGenFiles)
 set_property(GLOBAL PROPERTY AUTOGEN_SOURCE_GROUP AutoGenFiles)
 
 # Set the ffmpeg bin path
-set(FFMPEG_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../_assets/ffmpeg-n6.0-latest-win64-lgpl-shared-6.0)
+set(FFMPEG_PATH ${CMAKE_CURRENT_SOURCE_DIR}/_assets/ffmpeg-n6.0-latest-win64-lgpl-shared-6.0)
 set(FFMPEG_PATH_BIN ${FFMPEG_PATH}/bin)
 set(FFMPEG_PATH_INC ${FFMPEG_PATH}/include)
 set(FFMPEG_PATH_LIB ${FFMPEG_PATH}/lib)
