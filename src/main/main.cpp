@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
   std::thread([&](FFMPEGDecoder decoder)
     {
       decoder.run();
-    }).detach();
+    }, decoder).detach();
 
   // Start message loop
   Win32MessageHandler::getInstance().run();
