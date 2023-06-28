@@ -2,6 +2,10 @@
 #include "stdafx.h"
 #include "win32messagehandler.h"
 #include "dx11manager.h"
+#include "ffmpegdecoder.h"
+
+#include <chrono>
+#include <thread>
 
 #pragma comment(lib, "d3d11")
 #pragma comment(lib, "d3dcompiler")
@@ -15,6 +19,12 @@ int main(int argc, char* argv[])
 
   // Set locale(use to the system default locale)
   std::wcout.imbue(std::locale(""));
+
+  if (argc < 2)
+  {
+    std::cout << argv[0] << " <file name or url>" << std::endl;
+    return -1;
+  }
 
   // Create main window.
   bool result = Win32MessageHandler::getInstance().init((HINSTANCE)0, 1);
@@ -38,8 +48,28 @@ int main(int argc, char* argv[])
     return -1;
   }
 
+  FFMPEGDecoder decoder;
+  std::string url = argv[1];
+  std::wstring wsURL = std::wstring(url.begin(), url.end());
+  if(decoder.openInputFile(wsURL) < 0)
+  {
+    MessageBoxW(nullptr, L"Failed to open file or url by ffmpeg decoder.", L"Error", MB_OK);
+  }
+  // Start to decode thread
+  std::thread([&](FFMPEGDecoder decoder)
+    {
+      decoder.run();
+    }).detach();
+
   // Start message loop
   Win32MessageHandler::getInstance().run();
+
+  // decoder stop
+  decoder.stop();
+
+  // wait to finish the decoder thread
+  std::chrono::milliseconds duration(1000);
+  std::this_thread::sleep_for(duration);
 
   return 0;
 }
