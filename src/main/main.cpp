@@ -25,6 +25,7 @@ int main(int argc, char* argv[])
   }
 
   HWND previewWnd = Win32MessageHandler::getInstance().hwnd();
+  // Init window buffer size
   uint32_t width = 0, height = 0, fps = 0;
   width = 1280;
   height = 720;

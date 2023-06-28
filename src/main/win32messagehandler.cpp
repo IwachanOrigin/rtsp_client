@@ -24,7 +24,7 @@ bool Win32MessageHandler::init(HINSTANCE hinst, int nCmdShow)
   // Parse the command line parameters
   // TODO
 
-  const WCHAR className[100] = L"Capture Engine MainWindow Class";
+  const WCHAR className[100] = L"Render Engine MainWindow Class";
 
   // Initialize the window class.
   WNDCLASSEXW windowClass = {0};
@@ -36,7 +36,7 @@ bool Win32MessageHandler::init(HINSTANCE hinst, int nCmdShow)
   windowClass.lpszClassName = className;
   RegisterClassExW(&windowClass);
 
-  RECT windowRect = {0, 0, static_cast<LONG>(1920), static_cast<LONG>(1080)};
+  RECT windowRect = {0, 0, static_cast<LONG>(1280), static_cast<LONG>(720)};
   AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
 
   // Create the window and store a handle to it.
@@ -67,9 +67,6 @@ bool Win32MessageHandler::init(HINSTANCE hinst, int nCmdShow)
 
 int Win32MessageHandler::run()
 {
-  // Initialize the window.
-  //window->onInit();
-
   // Main loop.
   MSG msg = {};
   while (msg.message != WM_QUIT)
@@ -81,8 +78,6 @@ int Win32MessageHandler::run()
       DispatchMessage(&msg);
     }
   }
-
-  //window->onDestroy();
 
   return static_cast<char>(msg.wParam);
 }
