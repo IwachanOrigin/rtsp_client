@@ -15,8 +15,6 @@ using namespace manager;
 
 int main(int argc, char* argv[])
 {
-  HRESULT hr = S_OK;
-
   // Set locale(use to the system default locale)
   std::wcout.imbue(std::locale(""));
 
@@ -34,11 +32,20 @@ int main(int argc, char* argv[])
     return -1;
   }
 
+  // Create decoder
+  FFMPEGDecoder decoder;
+  std::string url = argv[1];
+  std::wstring wsURL = std::wstring(url.begin(), url.end());
+  uint32_t width = 0, height = 0;
+  if(decoder.openInputFile(wsURL, width, height) < 0)
+  {
+    MessageBoxW(nullptr, L"Failed to open file or url by ffmpeg decoder.", L"Error", MB_OK);
+    return -1;
+  }
+
   HWND previewWnd = Win32MessageHandler::getInstance().hwnd();
   // Init window buffer size
-  uint32_t width = 0, height = 0, fps = 0;
-  width = 1280;
-  height = 720;
+  uint32_t fps = 0;
   fps = 60;
   // Create dx11 device, context, swapchain
   result = DX11Manager::getInstance().init(previewWnd, width, height, fps);
@@ -48,18 +55,11 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  FFMPEGDecoder decoder;
-  std::string url = argv[1];
-  std::wstring wsURL = std::wstring(url.begin(), url.end());
-  if(decoder.openInputFile(wsURL) < 0)
-  {
-    MessageBoxW(nullptr, L"Failed to open file or url by ffmpeg decoder.", L"Error", MB_OK);
-  }
   // Start to decode thread
   std::thread([&](FFMPEGDecoder decoder)
-    {
-      decoder.run();
-    }, decoder).detach();
+  {
+    decoder.run();
+  }, decoder).detach();
 
   // Start message loop
   Win32MessageHandler::getInstance().run();

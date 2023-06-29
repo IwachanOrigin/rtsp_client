@@ -1,10 +1,13 @@
 
 #include "ffmpegdecoder.h"
+#include "dx11manager.h"
 #include "stringhelper.h"
 
 #include <iostream>
 #include <chrono>
 #include <thread>
+
+using namespace manager;
 
 FFMPEGDecoder::FFMPEGDecoder()
 {
@@ -20,31 +23,9 @@ FFMPEGDecoder::FFMPEGDecoder()
 
 FFMPEGDecoder::~FFMPEGDecoder()
 {
-  if (m_pkt)
-  {
-    av_packet_free(&m_pkt);
-  }
-  if (m_yuvFrame)
-  {
-    av_frame_free(&m_yuvFrame);
-  }
-  if (m_rgbFrame)
-  {
-    av_frame_free(&m_rgbFrame);
-  }
-  if (m_videoCodecCtx)
-  {
-    avcodec_free_context(&m_videoCodecCtx);
-    avcodec_close(m_videoCodecCtx);
-  }
-  if (m_fmtCtx)
-  {
-    avformat_close_input(&m_fmtCtx);
-    avformat_free_context(m_fmtCtx);
-  }
 }
 
-int FFMPEGDecoder::openInputFile(const std::wstring url)
+int FFMPEGDecoder::openInputFile(const std::wstring url, uint32_t& outFrameWidth, uint32_t& outFrameHeight)
 {
   // convert wstring to string
   std::string strURL = wstringToString(url);
@@ -148,6 +129,8 @@ int FFMPEGDecoder::openInputFile(const std::wstring url)
     return -1;
   }
   m_decoderStatus = DecoderStatus::READY;
+  outFrameWidth = (uint32_t)m_videoCodecCtx->width;
+  outFrameHeight = (uint32_t)m_videoCodecCtx->height;
 
   return 0;
 }
@@ -161,7 +144,7 @@ void FFMPEGDecoder::run()
   }
 
   m_decoderStatus = DecoderStatus::START;
-  std::chrono::milliseconds duration(15);
+  std::chrono::milliseconds duration(1);
 
   // Read video information
   while (av_read_frame(m_fmtCtx, m_pkt) >= 0) // Get a frame data set in AVPacket structure from m_fmtCtx
@@ -183,12 +166,12 @@ void FFMPEGDecoder::run()
         {
           if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
           {
-            return;
+            break;
           }
           else if (ret < 0)
           {
             std::cerr << "Error during decoding" << std::endl;
-            // exit
+            break;
           }
           // convert to yuv420p to rgb32
           sws_scale(
@@ -201,6 +184,12 @@ void FFMPEGDecoder::run()
             , m_rgbFrame->linesize
             );
 
+          // Copy to gpu from cpu
+          if(DX11Manager::getInstance().updateTexture(m_outBuffer, m_numBytes))
+          {
+            // Render
+            DX11Manager::getInstance().render();
+          }
           // sleep : 15ms
           std::this_thread::sleep_for(duration);
         }

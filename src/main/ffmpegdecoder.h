@@ -29,7 +29,7 @@ public:
   explicit FFMPEGDecoder();
   ~FFMPEGDecoder();
 
-  int openInputFile(const std::wstring url);
+  int openInputFile(const std::wstring url, uint32_t& outFrameWidth, uint32_t& outFrameHeight);
   void run();
   void stop();
 

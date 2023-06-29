@@ -234,7 +234,6 @@ bool DX11Manager::updateTexture(const uint8_t* new_data, size_t data_size)
     return false;
   }
 
-  uint32_t bytes_per_texel = 1;
   const uint8_t* src = new_data;
   uint8_t* dst = (uint8_t*)ms.pData;
 
