@@ -29,8 +29,12 @@ int FFMPEGDecoder::openInputFile(const std::wstring url, uint32_t& outFrameWidth
 {
   // convert wstring to string
   std::string strURL = wstringToString(url);
+
+  // Set rtsp transport protocols
+  av_dict_set(&m_rtspOptions, "rtsp_transport", "tcp", 0);
+
   // Open video file or url
-  int ret = avformat_open_input(&m_fmtCtx, strURL.c_str(), nullptr, nullptr);
+  int ret = avformat_open_input(&m_fmtCtx, strURL.c_str(), nullptr, &m_rtspOptions);
   if (ret < 0)
   {
     std::cerr << "Failed to open video file." << std::endl;

@@ -40,6 +40,7 @@ private:
   AVPacket* m_pkt = nullptr;
   AVFrame* m_yuvFrame = nullptr;
   AVFrame* m_rgbFrame = nullptr;
+  AVDictionary* m_rtspOptions = nullptr;
 
   struct SwsContext* m_imgCtx = nullptr;
   unsigned char* m_outBuffer = nullptr;

@@ -43,7 +43,7 @@ bool Win32MessageHandler::init(HINSTANCE hinst, int nCmdShow)
   m_hwnd = CreateWindowExW(
     0
     , windowClass.lpszClassName
-    , L"USB Video Capture"
+    , L"RTSP Renderer"
     , WS_OVERLAPPEDWINDOW
     , CW_USEDEFAULT
     , CW_USEDEFAULT
