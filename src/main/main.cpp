@@ -33,13 +33,15 @@ int main(int argc, char* argv[])
   }
 
   // Create decoder
-  FFMPEGDecoder decoder;
+  FFMPEGDecoder* decoder = new FFMPEGDecoder();
   std::string url = argv[1];
   std::wstring wsURL = std::wstring(url.begin(), url.end());
   uint32_t width = 0, height = 0;
-  if(decoder.openInputFile(wsURL, width, height) < 0)
+  if(decoder->openInputFile(wsURL, width, height) < 0)
   {
     MessageBoxW(nullptr, L"Failed to open file or url by ffmpeg decoder.", L"Error", MB_OK);
+    delete decoder;
+    decoder = nullptr;
     return -1;
   }
 
@@ -52,24 +54,29 @@ int main(int argc, char* argv[])
   if (!result)
   {
     MessageBoxW(nullptr, L"Failed to init dx11.", L"Error", MB_OK);
+    delete decoder;
+    decoder = nullptr;
     return -1;
   }
 
   // Start to decode thread
-  std::thread([&](FFMPEGDecoder decoder)
+  std::thread([&](FFMPEGDecoder* decoder)
   {
-    decoder.run();
+    decoder->run();
   }, decoder).detach();
 
   // Start message loop
   Win32MessageHandler::getInstance().run();
 
   // decoder stop
-  decoder.stop();
+  decoder->stop();
 
   // wait to finish the decoder thread
   std::chrono::milliseconds duration(1000);
   std::this_thread::sleep_for(duration);
+
+  delete decoder;
+  decoder = nullptr;
 
   return 0;
 }
