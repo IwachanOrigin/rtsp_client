@@ -279,6 +279,7 @@ void FFMPEGDecoder::run()
       }
       av_packet_unref(m_pkt);
     }
+#if 0
     else if (m_pkt->stream_index == m_audioStreamIndex)
     {
       // Send to decoder
@@ -310,6 +311,7 @@ void FFMPEGDecoder::run()
       }
       av_packet_unref(m_pkt);
     }
+#endif
   }
   std::cout << "All video play done." << std::endl;
 
