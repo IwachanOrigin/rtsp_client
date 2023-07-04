@@ -14,6 +14,7 @@ extern "C"
 }
 
 #include <string>
+#include <mutex>
 
 class FFMPEGDecoder
 {
@@ -34,21 +35,32 @@ public:
   void stop();
 
 private:
+  int setupVideoCodec();
+  int setupAudioCodec();
+
+  // for audio and video
   AVFormatContext* m_fmtCtx = nullptr;
+  AVDictionary* m_rtspOptions = nullptr;
+  AVPacket* m_pkt = nullptr;
+  DecoderStatus m_decoderStatus = DecoderStatus::NONE;
+  std::mutex m_mutex;
+
+  // for audio
+  const AVCodec* m_audioCodec = nullptr;
+  AVCodecContext* m_audioCodecCtx = nullptr;
+  AVFrame* m_pcmFrame = nullptr;
+  int m_audioStreamIndex = -1;
+
+  // for video
   const AVCodec* m_videoCodec = nullptr;
   AVCodecContext* m_videoCodecCtx = nullptr;
-  AVPacket* m_pkt = nullptr;
   AVFrame* m_yuvFrame = nullptr;
   AVFrame* m_rgbFrame = nullptr;
-  AVDictionary* m_rtspOptions = nullptr;
-
+  int m_videoStreamIndex = -1;
+  int m_numBytes = -1;
   struct SwsContext* m_imgCtx = nullptr;
   unsigned char* m_outBuffer = nullptr;
 
-  int m_videoStreamIndex = -1;
-  int m_numBytes = -1;
-
-  DecoderStatus m_decoderStatus = DecoderStatus::NONE;
 };
 
 #endif // FFMPEG_DECODER_H_
