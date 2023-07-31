@@ -1,82 +1,108 @@
 
-#include "stdafx.h"
-#include "win32messagehandler.h"
-#include "dx11manager.h"
-#include "ffmpegdecoder.h"
-
+#include <memory>
+#include <iostream>
 #include <chrono>
 #include <thread>
+#include <vector>
+#include <string>
+#include <cstdlib>
 
-#pragma comment(lib, "d3d11")
-#pragma comment(lib, "d3dcompiler")
+#include "videoreader.h"
+#include "stringhelper.h"
 
-using namespace message_handler;
-using namespace manager;
+#pragma comment(lib, "avcodec")
+#pragma comment(lib, "avdevice")
+#pragma comment(lib, "avfilter")
+#pragma comment(lib, "avformat")
+#pragma comment(lib, "avutil")
+#pragma comment(lib, "swresample")
+#pragma comment(lib, "swscale")
+#pragma comment(lib, "SDL2")
 
-int main(int argc, char* argv[])
+#undef main
+
+static inline int getOutputAudioDeviceList(std::vector<std::wstring> &vec)
+{
+  int deviceNum = SDL_GetNumAudioDevices(0);
+  for (int i = 0; i < deviceNum; i++)
+  {
+    const char* audioDeviceName = SDL_GetAudioDeviceName(i, 0);
+    std::string mcAudioDeviceName = std::string(audioDeviceName);
+    std::wstring wcAudioDeviceName = UTF8ToUnicode(mcAudioDeviceName);
+    vec.push_back(wcAudioDeviceName);
+  }
+  return deviceNum;
+}
+
+static inline void usage()
+{
+  // Output command line parameter.
+  std::wcout << __wargv[0]
+             << " <file path / url>"
+             << " <output audio device index>"
+             << std::endl;
+  std::wcout << "i.e.," << std::endl;
+  std::wcout << __wargv[0] << " /path/to/movie.mp4 1" << std::endl << std::endl;
+
+  // Get audio output devices.
+  std::vector<std::wstring> vecAudioOutDevNames;
+  std::wcout << "----- Audio Output Devices -----" << std::endl;
+  getOutputAudioDeviceList(vecAudioOutDevNames);
+  if (vecAudioOutDevNames.empty())
+  {
+    std::wcerr << "Failed to get audio output devices." << std::endl;
+    return;
+  }
+  for (uint32_t i = 0; i < vecAudioOutDevNames.size(); i++)
+  {
+    std::wcout << "No. " << i << " : " << vecAudioOutDevNames[i] << std::endl;
+  }
+}
+
+int wmain(int argc, wchar_t *argv[])
 {
   // Set locale(use to the system default locale)
   std::wcout.imbue(std::locale(""));
 
-  if (argc < 2)
+  // init SDL
+  int ret = -1;
+  ret = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
+  if (ret != 0)
   {
-    std::cout << argv[0] << " <file name or url>" << std::endl;
+    std::cerr << "Could not initialize SDL" << SDL_GetError() << std::endl;
     return -1;
   }
 
-  // Create main window.
-  bool result = Win32MessageHandler::getInstance().init((HINSTANCE)0, 1);
-  if (!result)
+  if (argc != 3)
   {
-    MessageBoxW(nullptr, L"Failed to create main window.", L"Error", MB_OK);
+    usage();
     return -1;
   }
 
-  // Create decoder
-  FFMPEGDecoder* decoder = new FFMPEGDecoder();
-  std::string url = argv[1];
-  std::wstring wsURL = std::wstring(url.begin(), url.end());
-  uint32_t width = 0, height = 0;
-  if(decoder->openInputFile(wsURL, width, height) < 0)
+  std::vector<std::wstring> vecAudioOutDevNames;
+  int deviceNum = getOutputAudioDeviceList(vecAudioOutDevNames);
+  int outputAudioDevIndex = std::stoi(argv[2]);
+  if (deviceNum < outputAudioDevIndex)
   {
-    MessageBoxW(nullptr, L"Failed to open file or url by ffmpeg decoder.", L"Error", MB_OK);
-    delete decoder;
-    decoder = nullptr;
+    std::cerr << "Failed to input audio output device number." << std::endl;
+    usage();
     return -1;
   }
 
-  HWND previewWnd = Win32MessageHandler::getInstance().hwnd();
-  // Init window buffer size
-  uint32_t fps = 0;
-  fps = 60;
-  // Create dx11 device, context, swapchain
-  result = DX11Manager::getInstance().init(previewWnd, width, height, fps);
-  if (!result)
+  std::unique_ptr<VideoReader> videoReader = std::make_unique<VideoReader>();
+  std::wstring wsFilename = std::wstring(argv[1]);
+  std::string filename = wstringToString(wsFilename);
+  videoReader->start(filename, outputAudioDevIndex);
+  while(1)
   {
-    MessageBoxW(nullptr, L"Failed to init dx11.", L"Error", MB_OK);
-    delete decoder;
-    decoder = nullptr;
-    return -1;
+    std::chrono::milliseconds duration(1000);
+    std::this_thread::sleep_for(duration);
+    if (videoReader->quitStatus())
+    {
+      break;
+    }
   }
 
-  // Start to decode thread
-  std::thread([&](FFMPEGDecoder* decoder)
-  {
-    decoder->run();
-  }, decoder).detach();
-
-  // Start message loop
-  Win32MessageHandler::getInstance().run();
-
-  // decoder stop
-  decoder->stop();
-
-  // wait to finish the decoder thread
-  std::chrono::milliseconds duration(1000);
-  std::this_thread::sleep_for(duration);
-
-  delete decoder;
-  decoder = nullptr;
-
+  std::wcout << "finished." << std::endl;
   return 0;
 }
