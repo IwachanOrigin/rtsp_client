@@ -42,6 +42,7 @@ private:
 
   int stream_component_open(VideoState *videoState, int stream_index);
   int read_thread(void *arg);
+  int decode_interrupt_cb(void *videoState);
 };
 
 #endif // VIDEO_READER_H_
