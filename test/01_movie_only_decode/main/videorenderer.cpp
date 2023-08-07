@@ -64,58 +64,6 @@ int VideoRenderer::display_thread()
     // switch on the retrieved event type
     switch (event.type)
     {
-    case SDL_KEYDOWN:
-    {
-      switch (event.key.keysym.sym)
-      {
-        case SDLK_LEFT:
-        {
-          incr = -10.0;
-          goto do_seek;
-        }
-        break;
-
-        case SDLK_RIGHT:
-        {
-          incr = 10.0;
-          goto do_seek;
-        }
-        break;
-
-        case SDLK_DOWN:
-        {
-          incr = -60.0;
-          goto do_seek;
-        }
-        break;
-
-        case SDLK_UP:
-        {
-          incr = 60.0;
-          goto do_seek;
-        }
-        break;
-
-        do_seek:
-        {
-          if (m_videoState)
-          {
-            pos = m_videoState->get_master_clock();
-            pos += incr;
-            m_videoState->stream_seek((int64_t)(pos * AV_TIME_BASE), incr);
-          }
-        }
-        break;
-
-        default:
-        {
-          // nothing
-        }
-        break;
-      }
-    }
-    break;
-
     case FF_QUIT_EVENT:
     case SDL_QUIT:
     {

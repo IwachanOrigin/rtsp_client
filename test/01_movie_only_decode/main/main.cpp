@@ -84,8 +84,8 @@ int wmain(int argc, wchar_t *argv[])
     return -1;
   }
 
-  av_log_set_level(AV_LOG_DEBUG);
-  av_log_set_callback(my_log_callback);
+  //av_log_set_level(AV_LOG_DEBUG);
+  //av_log_set_callback(my_log_callback);
 
   std::vector<std::wstring> vecAudioOutDevNames;
   int deviceNum = getOutputAudioDeviceList(vecAudioOutDevNames);

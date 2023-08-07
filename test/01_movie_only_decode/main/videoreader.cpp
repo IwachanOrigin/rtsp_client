@@ -1,5 +1,6 @@
 
 #include <thread>
+#include <iostream>
 #include "videoreader.h"
 
 #define MAX_QUEUE_SIZE (15 * 1024 * 1024)
@@ -152,26 +153,6 @@ int VideoReader::read_thread(void *arg)
       break;
     }
 
-    // seek stuff goes here
-    if (videoState->seek_req)
-    {
-      int video_stream_index = -1;
-      int audio_stream_index = -1;
-      int64_t seek_target_video = videoState->seek_pos;
-      int64_t seek_target_audio = videoState->seek_pos;
-
-      if (videoState->videoStream >= 0)
-      {
-        video_stream_index = videoState->videoStream;
-      }
-
-      if (videoState->videoStream >= 0)
-      {
-        videoState->videoq.flush();
-        videoState->videoq.put(videoState->flush_pkt);
-      }
-    }
-
     // check audio and video packets queues size
     if (videoState->videoq.size > MAX_QUEUE_SIZE)
     {
@@ -218,6 +199,7 @@ int VideoReader::read_thread(void *arg)
       // otherwise free the memory
       av_packet_unref(packet);
     }
+    SDL_Delay(1);
   }
 
   // wait for the rest of the program to end
@@ -313,27 +295,6 @@ int VideoReader::stream_component_open(VideoState *videoState, int stream_index)
     return -1;
   }
 
-  if (codecCtx->codec_type == AVMEDIA_TYPE_AUDIO)
-  {
-    SDL_AudioSpec wants;
-    SDL_AudioSpec spec;
-
-    wants.freq = codecCtx->sample_rate;
-    wants.format = AUDIO_S16SYS;
-    wants.channels = codecCtx->ch_layout.nb_channels;
-    wants.silence = 0;
-    wants.samples = SDL_AUDIO_BUFFER_SIZE;
-    wants.callback = audio_callback;
-    wants.userdata = videoState;
-
-    // open audio device
-    deviceID = SDL_OpenAudioDevice(SDL_GetAudioDeviceName(m_videoState->output_audio_device_index, 0), false, &wants, &spec, 0);
-    if (deviceID <= 0)
-    {
-      ret = -1;
-      return -1;
-    }
-  }
   // init the AVCodecContext to use the given AVCodec
   if (avcodec_open2(codecCtx, codec, nullptr) < 0)
   {
@@ -343,27 +304,6 @@ int VideoReader::stream_component_open(VideoState *videoState, int stream_index)
 
   switch (codecCtx->codec_type)
   {
-    case AVMEDIA_TYPE_AUDIO:
-    {
-      // set videostate audio
-      videoState->audioStream = stream_index;
-      videoState->audio_st = pFormatCtx->streams[stream_index];
-      videoState->audio_ctx = codecCtx;
-      videoState->audio_buf_size = 0;
-      videoState->audio_buf_index = 0;
-      videoState->av_sync_type = DEFAULT_AV_SYNC_TYPE;
-
-      // zero out the block of memory pointed
-      std::memset(&videoState->audio_pkt, 0, sizeof(videoState->audio_pkt));
-
-      // init audio pkt queue
-      videoState->audioq.init();
-
-      // start playing audio device
-      SDL_PauseAudioDevice(deviceID, 0);
-    }
-    break;
-
     case AVMEDIA_TYPE_VIDEO:
     {
       // set videostate video

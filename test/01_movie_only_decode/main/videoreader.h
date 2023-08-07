@@ -6,8 +6,6 @@
 #include <memory>
 #include "videostate.h"
 #include "videodecoder.h"
-#include "audiodecoder.h"
-#include "audioresamplingstate.h"
 #include "videorenderer.h"
 
 extern "C"
