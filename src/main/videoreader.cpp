@@ -51,18 +51,19 @@ int VideoReader::read_thread(void *arg)
   AVPacket* packet = nullptr;
 
   AVFormatContext* pFormatCtx = nullptr;
+  AVDictionary* options = nullptr;
 #if 0
   pFormatCtx = avformat_alloc_context();
-  if (pFormatCtx)
+  if (!pFormatCtx)
   {
     std::cerr << "Failed to alloc avformat context." << std::endl;
     return -1;
   }
-  pFormatCtx->interrupt_callback.callback = this->decode_interrupt_cb;
+  pFormatCtx->interrupt_callback.callback = decode_interrupt_cb;
   pFormatCtx->interrupt_callback.opaque = videoState;
+  av_dict_set(&options, "scan_all_pmts", "1", AV_DICT_DONT_OVERWRITE);
 #endif
 
-  AVDictionary* options = nullptr;
   //av_dict_set(&options, "rtsp_transport", "tcp", 0);
   ret = avformat_open_input(&pFormatCtx, videoState->filename.c_str(), nullptr, &options);
   if (ret < 0)
