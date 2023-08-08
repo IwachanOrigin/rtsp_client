@@ -409,8 +409,11 @@ int synchronize_audio(VideoState *videoState, short *samples, int samples_size)
   // check
   if (videoState->av_sync_type != SYNC_TYPE::AV_SYNC_AUDIO_MASTER)
   {
-    double diff = 0, avg_diff = 0;
-    int wanted_size = 0, min_size = 0, max_size = 0;
+    double diff = 0;
+    double avg_diff = 0;
+    int wanted_size = 0;
+    int min_size = 0;
+    int max_size = 0;
     ref_clock = videoState->get_master_clock();
     diff = videoState->get_audio_clock() - ref_clock;
 

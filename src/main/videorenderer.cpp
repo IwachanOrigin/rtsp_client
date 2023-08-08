@@ -68,50 +68,50 @@ int VideoRenderer::display_thread()
     {
       switch (event.key.keysym.sym)
       {
-      case SDLK_LEFT:
-      {
-        incr = -10.0;
-        goto do_seek;
-      }
-      break;
-
-      case SDLK_RIGHT:
-      {
-        incr = 10.0;
-        goto do_seek;
-      }
-      break;
-
-      case SDLK_DOWN:
-      {
-        incr = -60.0;
-        goto do_seek;
-      }
-      break;
-
-      case SDLK_UP:
-      {
-        incr = 60.0;
-        goto do_seek;
-      }
-      break;
-
-      do_seek:
-      {
-        if (m_videoState)
+        case SDLK_LEFT:
         {
-          pos = m_videoState->get_master_clock();
-          pos += incr;
-          m_videoState->stream_seek((int64_t)(pos * AV_TIME_BASE), incr);
+          incr = -10.0;
+          goto do_seek;
         }
         break;
-      };
 
-      default:
-      {
-        // nothing
-      }
-      break;
+        case SDLK_RIGHT:
+        {
+          incr = 10.0;
+          goto do_seek;
+        }
+        break;
+
+        case SDLK_DOWN:
+        {
+          incr = -60.0;
+          goto do_seek;
+        }
+        break;
+
+        case SDLK_UP:
+        {
+          incr = 60.0;
+          goto do_seek;
+        }
+        break;
+
+        do_seek:
+        {
+          if (m_videoState)
+          {
+            pos = m_videoState->get_master_clock();
+            pos += incr;
+            m_videoState->stream_seek((int64_t)(pos * AV_TIME_BASE), incr);
+          }
+        }
+        break;
+
+        default:
+        {
+          // nothing
+        }
+        break;
       }
     }
     break;
@@ -175,10 +175,11 @@ void VideoRenderer::video_refresh_timer()
 
   // used for video frames display delay and audio video sync
   double pts_delay = 0;
-  double audio_ref_clock = 0;
+  double ref_clock = 0;
   double sync_threshold = 0;
   double real_delay = 0;
   double audio_video_delay = 0;
+  double diff = 0;
 
   // check the video stream was correctly opened
   if (m_videoState->video_st)
@@ -207,29 +208,35 @@ void VideoRenderer::video_refresh_timer()
       m_videoState->frame_last_delay = pts_delay;
       m_videoState->frame_last_pts = videoPicture->pts;
 
-      // update delay to stay in sync with the audio
-      audio_ref_clock = this->get_audio_clock();
-
-      audio_video_delay = videoPicture->pts - audio_ref_clock;
-
-      // skip or repeat the frame taking into account the delay
-      sync_threshold = (pts_delay > AV_SYNC_THRESHOLD) ? pts_delay : AV_SYNC_THRESHOLD;
-      //std::cout << "sync threshold : " << sync_threshold << std::endl;
-
-      // check audio video delay absolute value is below sync threshold
-      if (fabs(audio_video_delay) < AV_NOSYNC_THRESHOLD)
+#if 0
+      // update delay to sync to audio if not master source
+      if (m_videoState->av_sync_type != SYNC_TYPE::AV_SYNC_VIDEO_MASTER)
       {
-        if (audio_video_delay <= -sync_threshold)
-        {
-          pts_delay = 0;
-        }
-        else if (audio_video_delay >= sync_threshold)
-        {
-          pts_delay = 2 * pts_delay;
-        }
-      }
+        ref_clock = m_videoState->get_master_clock();
+        diff = videoPicture->pts - ref_clock;
 
-      //std::cout << "corrected pts delay : " << pts_delay << std::endl;
+        // skip or repeat the frame taking into account the delay
+        sync_threshold = (pts_delay > AV_SYNC_THRESHOLD) ? pts_delay : AV_SYNC_THRESHOLD;
+        //std::cout << "sync threshold : " << sync_threshold << std::endl;
+
+        // check audio video delay absolute value is below sync threshold
+        if (fabs(audio_video_delay) < AV_NOSYNC_THRESHOLD)
+        {
+          if (audio_video_delay <= -sync_threshold)
+          {
+            pts_delay = 0;
+          }
+          else if (audio_video_delay >= sync_threshold)
+          {
+            pts_delay = 2 * pts_delay;
+          }
+        }
+        //std::cout << "corrected pts delay : " << pts_delay << std::endl;
+      }
+#else
+      sync_threshold = AV_SYNC_THRESHOLD;
+      pts_delay = 0;
+#endif
 
       m_videoState->frame_timer += pts_delay;
       // compute the real delay
@@ -419,23 +426,4 @@ void VideoRenderer::video_display()
       SDL_UnlockMutex(m_videoState->screen_mutex);
     }
   }
-}
-
-double VideoRenderer::get_audio_clock()
-{
-  double pts = m_videoState->audio_clock;
-  int hw_buf_size = m_videoState->audio_buf_size - m_videoState->audio_buf_index;
-  int bytes_per_sec = 0;
-  int n = 2 * m_videoState->audio_ctx->ch_layout.nb_channels;
-  if (m_videoState->audio_st)
-  {
-    bytes_per_sec = m_videoState->audio_ctx->sample_rate * n;
-  }
-
-  if (bytes_per_sec)
-  {
-    pts -= (double)hw_buf_size / bytes_per_sec;
-  }
-
-  return pts;
 }

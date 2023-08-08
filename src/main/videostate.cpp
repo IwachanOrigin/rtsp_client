@@ -36,6 +36,7 @@ VideoState::VideoState()
   , pictq_mutex(SDL_CreateMutex())
   , screen_mutex(SDL_CreateMutex())
   , output_audio_device_index(0)
+  , av_sync_type(DEFAULT_AV_SYNC_TYPE)
 {
   flush_pkt = av_packet_alloc();
   flush_pkt->data = (uint8_t*)"FLUSH";

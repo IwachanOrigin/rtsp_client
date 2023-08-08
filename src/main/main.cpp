@@ -59,6 +59,11 @@ static inline void usage()
   }
 }
 
+void my_log_callback(void* ptr, int level, const char* fmt, va_list vargs)
+{
+  vprintf(fmt, vargs);
+}
+
 int wmain(int argc, wchar_t *argv[])
 {
   // Set locale(use to the system default locale)
@@ -78,6 +83,9 @@ int wmain(int argc, wchar_t *argv[])
     usage();
     return -1;
   }
+
+  //av_log_set_level(AV_LOG_DEBUG);
+  //av_log_set_callback(my_log_callback);
 
   std::vector<std::wstring> vecAudioOutDevNames;
   int deviceNum = getOutputAudioDeviceList(vecAudioOutDevNames);

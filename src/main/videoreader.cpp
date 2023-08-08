@@ -28,6 +28,9 @@ int VideoReader::start(const std::string filename, const int audioDeviceIndex)
   // set output audio device index
   m_videoState->output_audio_device_index = audioDeviceIndex;
 
+  // set clock
+  m_videoState->av_sync_type = SYNC_TYPE::AV_SYNC_EXTERNAL_MASTER;
+
   // start read thread
   std::thread([&](VideoReader *reader)
     {
@@ -169,7 +172,7 @@ int VideoReader::read_thread(void *arg)
     {
       break;
     }
-
+#if 0
     // seek stuff goes here
     if (videoState->seek_req)
     {
@@ -236,7 +239,7 @@ int VideoReader::read_thread(void *arg)
         videoState->seek_req = 0;
       }
     }
-
+#endif
     // check audio and video packets queues size
     if (videoState->audioq.size + videoState->videoq.size > MAX_QUEUE_SIZE)
     {
@@ -260,7 +263,7 @@ int VideoReader::read_thread(void *arg)
         videoState->quit = 1;
         break;
       }
-      else if (videoState->pFormatCtx->pb->error == 0)
+      else if (!videoState->pFormatCtx->pb && videoState->pFormatCtx->pb->error == 0)
       {
         // no read error, wait for user input
         SDL_Delay(10);

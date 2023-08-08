@@ -21,7 +21,6 @@ private:
   void video_refresh_timer();
   static Uint32 sdl_refresh_timer_cb(Uint32 interval, void *param);
   void video_display();
-  double get_audio_clock();
 };
 
 #endif // VIDEO_RENDERER_H_
