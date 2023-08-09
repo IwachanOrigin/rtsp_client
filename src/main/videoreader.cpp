@@ -34,40 +34,51 @@ int VideoReader::start(const std::string filename, const int audioDeviceIndex)
   // start read thread
   std::thread([&](VideoReader *reader)
     {
-      reader->read_thread(m_videoState);
+      reader->readThread(m_videoState);
     }, this).detach();
 
   return 0;
 }
 
-int VideoReader::read_thread(void *arg)
+int VideoReader::readThread(void *arg)
 {
   int ret = -1;
 
-  // retrieve global VideoState reference
+  // Retrieve global VideoState reference
   VideoState *videoState = (VideoState *)arg;
   videoState->quit = 0;
 
-  // video and audio stream indexes
   int videoStream = -1;
   int audioStream = -1;
   AVPacket* packet = nullptr;
 
   AVFormatContext* pFormatCtx = nullptr;
   AVDictionary* options = nullptr;
-#if 0
+
   pFormatCtx = avformat_alloc_context();
   if (!pFormatCtx)
   {
     std::cerr << "Failed to alloc avformat context." << std::endl;
     return -1;
   }
-  pFormatCtx->interrupt_callback.callback = decode_interrupt_cb;
+  //
+  pFormatCtx->interrupt_callback.callback = decodeInterruptCB;
   pFormatCtx->interrupt_callback.opaque = videoState;
+
+#if 0
+  // 'scan_all_pmts' is an option primarily related to streaming MPEG-TS and reading files.
+  // When enabled, all PMTs are scanned, not just the first PMT.
+  // For MPEG-TS with multiple PMTs, all stream information can be retrieved.
+  // This option is always set in ffplay.
   av_dict_set(&options, "scan_all_pmts", "1", AV_DICT_DONT_OVERWRITE);
 #endif
 
-  //av_dict_set(&options, "rtsp_transport", "tcp", 0);
+#if 0
+  // 'rtsp_transport' sets the receive protocol for the RTSP stream.
+  // The default is to use UDP.
+  av_dict_set(&options, "rtsp_transport", "tcp", 0);
+#endif
+
   ret = avformat_open_input(&pFormatCtx, videoState->filename.c_str(), nullptr, &options);
   if (ret < 0)
   {
@@ -77,14 +88,14 @@ int VideoReader::read_thread(void *arg)
   av_dict_free(&options);
   options = nullptr;
 
-  // reset streamindex
+  // Reset streamindex
   videoState->videoStream = -1;
   videoState->audioStream = -1;
 
-  // set the avformatcontext for the global videostate ref
+  // Set the avformatcontext for the global videostate ref
   videoState->pFormatCtx = pFormatCtx;
 
-  // read packets of the media file to get stream info
+  // Read packets of the media file to get stream info
   ret = avformat_find_stream_info(pFormatCtx, nullptr);
   if (ret < 0)
   {
@@ -92,26 +103,26 @@ int VideoReader::read_thread(void *arg)
     return -1;
   }
 
-  // dump info about file onto standard error
+  // Dump info about file onto standard error
   av_dump_format(pFormatCtx, 0, videoState->filename.c_str(), 0);
 
-  // loop through the streams that have been found
+  // Loop through the streams that have been found
   for (int i = 0; i < pFormatCtx->nb_streams; i++)
   {
-    // look for the video stream
+    // Look for the video stream
     if (pFormatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO && videoStream < 0)
     {
       videoStream = i;
     }
 
-    // look for the audio stream
+    // Look for the audio stream
     if (pFormatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && audioStream < 0)
     {
       audioStream = i;
     }
   }
 
-  // return with error in case no video stream was found
+  // Return with error in case no video stream was found
   if (videoStream == -1)
   {
     std::cerr << "Could not open video stream" << std::endl;
@@ -119,10 +130,8 @@ int VideoReader::read_thread(void *arg)
   }
   else
   {
-    // open video stream
-    ret = stream_component_open(videoState, videoStream);
-
-    // check video codec was opened correctly
+    // Open video stream
+    ret = this->streamComponentOpen(videoState, videoStream);
     if (ret < 0)
     {
       std::cerr << "Could not find video codec" << std::endl;
@@ -133,7 +142,7 @@ int VideoReader::read_thread(void *arg)
     m_videoRenderer->start(videoState);
   }
 
-  // return with error in case no audio stream was found
+  // Return with error in case no audio stream was found
   if (audioStream == -1)
   {
     std::cerr << "Could not find audio stream" << std::endl;
@@ -141,10 +150,8 @@ int VideoReader::read_thread(void *arg)
   }
   else
   {
-    // open audio stream component codec
-    ret = stream_component_open(videoState, audioStream);
-
-    // check audio codec was opened correctly
+    // Open audio stream component codec
+    ret = this->streamComponentOpen(videoState, audioStream);
     if (ret < 0)
     {
       std::cerr << "Could not find audio codec" << std::endl;
@@ -164,10 +171,10 @@ int VideoReader::read_thread(void *arg)
     goto fail;
   }
 
-  // main decode loop. read in a packet and put it on the queue
+  // Main decode loop. read in a packet and put it on the queue
   for (;;)
   {
-    // check global quit flag
+    // Check global quit flag
     if (videoState->quit)
     {
       break;
@@ -240,43 +247,43 @@ int VideoReader::read_thread(void *arg)
       }
     }
 #endif
-    // check audio and video packets queues size
+    // Check audio and video packets queues size
     if (videoState->audioq.size + videoState->videoq.size > MAX_QUEUE_SIZE)
     {
-      // wait for audio and video queues to decrease size
+      // Wait for audio and video queues to decrease size
       SDL_Delay(10);
       continue;
     }
-    // read data from the AVFormatContext by repeatedly calling av_read_frame
+    // Read data from the AVFormatContext by repeatedly calling av_read_frame
     ret = av_read_frame(videoState->pFormatCtx, packet);
     if (ret < 0)
     {
       if (ret == AVERROR_EOF)
       {
-        // wait for the rest of the program to end
+        // Wait for the rest of the program to end
         while (videoState->videoq.nb_packets > 0 && videoState->audioq.nb_packets > 0)
         {
           SDL_Delay(10);
         }
 
-        // media EOF reached, quit
+        // Media EOF reached, quit
         videoState->quit = 1;
         break;
       }
       else if (!videoState->pFormatCtx->pb && videoState->pFormatCtx->pb->error == 0)
       {
-        // no read error, wait for user input
+        // No read error, wait for user input
         SDL_Delay(10);
         continue;
       }
       else
       {
-        // exit for loop in case of error
+        // Exit for loop in case of error
         break;
       }
     }
 
-    // put the packet in the appropriate queue
+    // Put the packet in the appropriate queue
     if (packet->stream_index == videoState->videoStream)
     {
       videoState->videoq.put(packet);
@@ -287,12 +294,12 @@ int VideoReader::read_thread(void *arg)
     }
     else
     {
-      // otherwise free the memory
+      // Otherwise free the memory
       av_packet_unref(packet);
     }
   }
 
-  // wait for the rest of the program to end
+  // Wait for the rest of the program to end
   while (!videoState->quit)
   {
     SDL_Delay(100);
@@ -300,7 +307,7 @@ int VideoReader::read_thread(void *arg)
 
 fail:
   {
-    // device stop, memory release
+    // Device stop, memory release
     if (deviceID > 0)
     {
       SDL_LockAudioDevice(deviceID);
@@ -321,11 +328,11 @@ fail:
 
     if (pFormatCtx)
     {
-      // close the opened input avformatcontext
+      // Close the opened input avformatcontext
       avformat_close_input(&pFormatCtx);
     }
     pFormatCtx = nullptr;
-    // clear queue
+    // Clear queue
     videoState->videoq.clear();
     videoState->audioq.clear();
 
@@ -340,14 +347,14 @@ fail:
       avcodec_free_context(&videoState->video_ctx);
     }
     videoState->video_ctx = nullptr;
-    // clean up memory
+    // Clean up memory
     //av_free(videoState);
 
   }
   return 0;
 }
 
-int VideoReader::stream_component_open(VideoState *videoState, int stream_index)
+int VideoReader::streamComponentOpen(VideoState *videoState, int stream_index)
 {
   // retrieve file I/O context
   AVFormatContext *pFormatCtx = videoState->pFormatCtx;
@@ -481,7 +488,7 @@ int VideoReader::stream_component_open(VideoState *videoState, int stream_index)
   return 0;
 }
 
-int VideoReader::decode_interrupt_cb(void* videoState)
+int VideoReader::decodeInterruptCB(void* videoState)
 {
   VideoState* is = (VideoState*)videoState;
   return is->quit;

@@ -16,11 +16,11 @@ private:
   VideoState *m_videoState;
   SDL_Window *m_screen;
 
-  int display_thread();
-  void schedule_refresh(int delay);
-  void video_refresh_timer();
-  static Uint32 sdl_refresh_timer_cb(Uint32 interval, void *param);
-  void video_display();
+  int displayThread();
+  void scheduleRefresh(int delay);
+  void videoRefreshTimer();
+  static Uint32 sdlRefreshTimerCB(Uint32 interval, void *param);
+  void videoDisplay();
 };
 
 #endif // VIDEO_RENDERER_H_

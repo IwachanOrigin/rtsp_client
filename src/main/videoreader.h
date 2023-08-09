@@ -40,9 +40,9 @@ private:
   VideoRenderer* m_videoRenderer;
   VideoState* m_videoState;
 
-  int stream_component_open(VideoState *videoState, int stream_index);
-  int read_thread(void *arg);
-  static int decode_interrupt_cb(void *videoState);
+  int streamComponentOpen(VideoState *videoState, int stream_index);
+  int readThread(void *arg);
+  static int decodeInterruptCB(void *videoState);
 };
 
 #endif // VIDEO_READER_H_
