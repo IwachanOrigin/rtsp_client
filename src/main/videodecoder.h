@@ -25,9 +25,9 @@ public:
 private:
   VideoState *m_videoState;
 
-  int video_thread(void *arg);
-  int64_t guess_correct_pts(AVCodecContext *ctx, int64_t reordered_pts, int64_t dts);
-  double sync_video(VideoState *videoState, AVFrame *src_frame, double pts);
+  int videoThread(void *arg);
+  int64_t guessCorrectPts(AVCodecContext *ctx, int64_t reordered_pts, int64_t dts);
+  double syncVideo(VideoState *videoState, AVFrame *src_frame, double pts);
 };
 
 

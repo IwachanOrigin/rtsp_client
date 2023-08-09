@@ -100,9 +100,9 @@ int VideoRenderer::displayThread()
         {
           if (m_videoState)
           {
-            pos = m_videoState->get_master_clock();
+            pos = m_videoState->getMasterClock();
             pos += incr;
-            m_videoState->stream_seek((int64_t)(pos * AV_TIME_BASE), incr);
+            m_videoState->streamSeek((int64_t)(pos * AV_TIME_BASE), incr);
           }
         }
         break;
@@ -212,7 +212,7 @@ void VideoRenderer::videoRefreshTimer()
       // Update delay to sync to audio if not master source
       if (m_videoState->av_sync_type != SYNC_TYPE::AV_SYNC_VIDEO_MASTER)
       {
-        ref_clock = m_videoState->get_master_clock();
+        ref_clock = m_videoState->getMasterClock();
         diff = videoPicture->pts - ref_clock;
 
         // Skip or repeat the frame taking into account the delay

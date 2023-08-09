@@ -46,9 +46,9 @@ VideoState::~VideoState()
 {
 }
 
-void VideoState::alloc_picture()
+void VideoState::allocPicture()
 {
-  VideoPicture *videoPicture;
+  VideoPicture *videoPicture = nullptr;
   videoPicture = &pictq[pictq_windex];
 
   // check if the sdl_overlay is allocated
@@ -103,7 +103,7 @@ void VideoState::alloc_picture()
   videoPicture->allocated = 1;
 }
 
-int VideoState::queue_picture(AVFrame *pFrame, double pts)
+int VideoState::queuePicture(AVFrame *pFrame, double pts)
 {
   // lock videostate pictq mutex
   SDL_LockMutex(pictq_mutex);
@@ -135,7 +135,7 @@ int VideoState::queue_picture(AVFrame *pFrame, double pts)
     videoPicture->allocated = 0;
 
     // allocate a new sdl_overlay for the videoPicture struct
-    this->alloc_picture();
+    this->allocPicture();
 
     // check global quit flag
     if (quit)
@@ -192,19 +192,19 @@ int VideoState::queue_picture(AVFrame *pFrame, double pts)
   return 0;
 }
 
-double VideoState::get_master_clock()
+double VideoState::getMasterClock()
 {
   if (av_sync_type == SYNC_TYPE::AV_SYNC_VIDEO_MASTER)
   {
-    return get_video_clock();
+    return this->getVideoClock();
   }
   else if (av_sync_type == SYNC_TYPE::AV_SYNC_AUDIO_MASTER)
   {
-    return get_audio_clock();
+    return this->getAudioClock();
   }
   else if (av_sync_type == SYNC_TYPE::AV_SYNC_EXTERNAL_MASTER)
   {
-    return get_external_clock();
+    return this->getExternalClock();
   }
   else
   {
@@ -213,13 +213,13 @@ double VideoState::get_master_clock()
   }
 }
 
-double VideoState::get_video_clock()
+double VideoState::getVideoClock()
 {
   double delta = (av_gettime() - video_current_pts_time) / 1000000.0;
   return video_current_pts + delta;
 }
 
-double VideoState::get_audio_clock()
+double VideoState::getAudioClock()
 {
   double pts = audio_clock;
   int hw_buf_size = audio_buf_size - audio_buf_index;
@@ -239,7 +239,7 @@ double VideoState::get_audio_clock()
   return pts;
 }
 
-double VideoState::get_external_clock()
+double VideoState::getExternalClock()
 {
   external_clock_time = av_gettime();
   external_clock = external_clock_time / 1000000.0;
@@ -248,7 +248,7 @@ double VideoState::get_external_clock()
 }
 
 
-void VideoState::stream_seek(int64_t pos, int rel)
+void VideoState::streamSeek(int64_t pos, int rel)
 {
   if (!seek_req)
   {

@@ -2,7 +2,6 @@
 #include <iostream>
 #include <thread>
 #include "videodecoder.h"
-#include "timer.h"
 
 VideoDecoder::VideoDecoder()
   : m_videoState(nullptr)
@@ -21,7 +20,7 @@ int VideoDecoder::start(VideoState *videoState)
   {
     std::thread([&](VideoDecoder *decoder)
       {
-        decoder->video_thread(m_videoState);
+        decoder->videoThread(m_videoState);
       }, this).detach();
   }
   else
@@ -31,7 +30,7 @@ int VideoDecoder::start(VideoState *videoState)
   return 0;
 }
 
-int VideoDecoder::video_thread(void *arg)
+int VideoDecoder::videoThread(void *arg)
 {
   // retrieve global videostate
   VideoState *videoState = (VideoState *)arg;
@@ -103,7 +102,7 @@ int VideoDecoder::video_thread(void *arg)
         frameFinished = 1;
       }
 
-      pts = this->guess_correct_pts(videoState->video_ctx, pFrame->pts, pFrame->pkt_dts);
+      pts = this->guessCorrectPts(videoState->video_ctx, pFrame->pts, pFrame->pkt_dts);
       // in case we get an undefined timestamp value
       if (pts == AV_NOPTS_VALUE)
       {
@@ -116,8 +115,8 @@ int VideoDecoder::video_thread(void *arg)
       // did we get an entire video frame?
       if (frameFinished)
       {
-        pts = this->sync_video(videoState, pFrame, pts);
-        if (m_videoState->queue_picture(pFrame, pts) < 0)
+        pts = this->syncVideo(videoState, pFrame, pts);
+        if (m_videoState->queuePicture(pFrame, pts) < 0)
         {
           break;
         }
@@ -135,7 +134,7 @@ int VideoDecoder::video_thread(void *arg)
 }
 
 
-int64_t VideoDecoder::guess_correct_pts(AVCodecContext *ctx, int64_t reordered_pts, int64_t dts)
+int64_t VideoDecoder::guessCorrectPts(AVCodecContext *ctx, int64_t reordered_pts, int64_t dts)
 {
   int64_t pts = AV_NOPTS_VALUE;
 
@@ -171,7 +170,7 @@ int64_t VideoDecoder::guess_correct_pts(AVCodecContext *ctx, int64_t reordered_p
   return pts;
 }
 
-double VideoDecoder::sync_video(VideoState *videoState, AVFrame *src_frame, double pts)
+double VideoDecoder::syncVideo(VideoState *videoState, AVFrame *src_frame, double pts)
 {
 
   double frame_delay = 0.0;

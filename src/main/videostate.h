@@ -42,13 +42,13 @@ public:
   explicit VideoState();
   ~VideoState();
 
-  int queue_picture(AVFrame *pFrame, double pts);
+  int queuePicture(AVFrame *pFrame, double pts);
 
-  double get_master_clock();
-  double get_video_clock();
-  double get_audio_clock();
-  double get_external_clock();
-  void stream_seek(int64_t pos, int rel);
+  double getMasterClock();
+  double getVideoClock();
+  double getAudioClock();
+  double getExternalClock();
+  void streamSeek(int64_t pos, int rel);
 
   AVFormatContext *pFormatCtx;
 
@@ -119,7 +119,7 @@ public:
   AVPacket* flush_pkt;
 
 private:
-  void alloc_picture();
+  void allocPicture();
 };
 
 #endif // VIDEO_STATE_H_

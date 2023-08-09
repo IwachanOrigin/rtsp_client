@@ -414,8 +414,8 @@ int synchronize_audio(VideoState *videoState, short *samples, int samples_size)
     int wanted_size = 0;
     int min_size = 0;
     int max_size = 0;
-    ref_clock = videoState->get_master_clock();
-    diff = videoState->get_audio_clock() - ref_clock;
+    ref_clock = videoState->getMasterClock();
+    diff = videoState->getAudioClock() - ref_clock;
 
     if (diff < AV_NOSYNC_THRESHOLD)
     {
