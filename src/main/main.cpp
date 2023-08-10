@@ -10,17 +10,6 @@
 #include "videoreader.h"
 #include "stringhelper.h"
 
-#pragma comment(lib, "avcodec")
-#pragma comment(lib, "avdevice")
-#pragma comment(lib, "avfilter")
-#pragma comment(lib, "avformat")
-#pragma comment(lib, "avutil")
-#pragma comment(lib, "swresample")
-#pragma comment(lib, "swscale")
-#pragma comment(lib, "SDL2")
-
-#undef main
-
 static inline int getOutputAudioDeviceList(std::vector<std::wstring> &vec)
 {
   int deviceNum = SDL_GetNumAudioDevices(0);
@@ -59,7 +48,7 @@ static inline void usage()
   }
 }
 
-void my_log_callback(void* ptr, int level, const char* fmt, va_list vargs)
+void myLogCallback(void* ptr, int level, const char* fmt, va_list vargs)
 {
   vprintf(fmt, vargs);
 }
@@ -84,8 +73,11 @@ int wmain(int argc, wchar_t *argv[])
     return -1;
   }
 
-  //av_log_set_level(AV_LOG_DEBUG);
-  //av_log_set_callback(my_log_callback);
+#if 0
+  // Enable console logging for the ffmpeg api.
+  av_log_set_level(AV_LOG_DEBUG);
+  av_log_set_callback(myLogCallback);
+#endif
 
   std::vector<std::wstring> vecAudioOutDevNames;
   int deviceNum = getOutputAudioDeviceList(vecAudioOutDevNames);

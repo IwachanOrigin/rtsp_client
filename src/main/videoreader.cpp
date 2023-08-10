@@ -61,7 +61,7 @@ int VideoReader::readThread(void *arg)
     std::cerr << "Failed to alloc avformat context." << std::endl;
     return -1;
   }
-  //
+  // interrupt_callback is a callback function for checking interrupted I/O operations.
   pFormatCtx->interrupt_callback.callback = decodeInterruptCB;
   pFormatCtx->interrupt_callback.opaque = videoState;
 
@@ -179,74 +179,7 @@ int VideoReader::readThread(void *arg)
     {
       break;
     }
-#if 0
-    // seek stuff goes here
-    if (videoState->seek_req)
-    {
-      int video_stream_index = -1;
-      int audio_stream_index = -1;
-      int64_t seek_target_video = videoState->seek_pos;
-      int64_t seek_target_audio = videoState->seek_pos;
 
-      if (videoState->videoStream >= 0)
-      {
-        video_stream_index = videoState->videoStream;
-      }
-
-      if (videoState->audioStream >= 0)
-      {
-        audio_stream_index = videoState->audioStream;
-      }
-
-      if (video_stream_index >= 0 && audio_stream_index >= 0)
-      {
-        // MSVC does not support compound literals like AV_TIME_BASE_Q in C++ code (compiler error C4576)
-        AVRational timebase;
-        timebase.num = 1;
-        timebase.den = AV_TIME_BASE;
-
-        seek_target_video = av_rescale_q(
-          seek_target_video
-          , timebase
-          , pFormatCtx->streams[video_stream_index]->time_base);
-        seek_target_audio = av_rescale_q(
-          seek_target_audio
-          , timebase
-          , pFormatCtx->streams[audio_stream_index]->time_base);
-      }
-
-      ret = av_seek_frame(
-        videoState->pFormatCtx
-        , video_stream_index
-        , seek_target_video
-        , videoState->seek_flags);
-      ret &= av_seek_frame(
-        videoState->pFormatCtx
-        , audio_stream_index
-        , seek_target_audio
-        , videoState->seek_flags);
-
-      if (ret < 0)
-      {
-        //
-      }
-      else
-      {
-        if (videoState->videoStream >= 0)
-        {
-          videoState->videoq.flush();
-          videoState->videoq.put(videoState->flush_pkt);
-        }
-
-        if (videoState->audioStream >= 0)
-        {
-          videoState->audioq.flush();
-          videoState->audioq.put(videoState->flush_pkt);
-        }
-        videoState->seek_req = 0;
-      }
-    }
-#endif
     // Check audio and video packets queues size
     if (videoState->audioq.size + videoState->videoq.size > MAX_QUEUE_SIZE)
     {
@@ -347,9 +280,6 @@ fail:
       avcodec_free_context(&videoState->video_ctx);
     }
     videoState->video_ctx = nullptr;
-    // Clean up memory
-    //av_free(videoState);
-
   }
   return 0;
 }
@@ -378,12 +308,6 @@ int VideoReader::streamComponentOpen(VideoState *videoState, int stream_index)
   // retrieve codec context
   AVCodecContext *codecCtx = nullptr;
   codecCtx = avcodec_alloc_context3(codec);
-
-  // use multi core
-  // fhd, 60p = 1 threads
-  // 4k, 60p  = 4 threads
-  //codecCtx->thread_count = 4;
-  //codecCtx->thread_type = FF_THREAD_FRAME;
 
   int ret = avcodec_parameters_to_context(codecCtx, pFormatCtx->streams[stream_index]->codecpar);
   if (ret != 0)
