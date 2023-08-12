@@ -31,10 +31,9 @@ int VideoRenderer::start(VideoState *videoState)
   if (m_videoState)
   {
     std::thread([&](VideoRenderer *vr)
-      {
-        vr->displayThread();
-
-      }, this).detach();
+    {
+      vr->displayThread();
+    }, this).detach();
   }
   else
   {

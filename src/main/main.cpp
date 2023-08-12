@@ -7,8 +7,20 @@
 #include <string>
 #include <cstdlib>
 
+#include "videostate.h"
 #include "videoreader.h"
 #include "stringhelper.h"
+
+struct Options
+{
+  int audioIndex = 0;
+  int syncType = 0;
+  int scanAllPmts = 0;
+  int rtspTransport = 0;
+  int maxDelay = 0;
+  int stimeout = 0;
+  int bufferSize = 0;
+};
 
 static inline int getOutputAudioDeviceList(std::vector<std::wstring> &vec)
 {
@@ -29,9 +41,15 @@ static inline void usage()
   std::wcout << __wargv[0]
              << " <file path / url>"
              << " <output audio device index>"
+             << " <sync type>"
              << std::endl;
   std::wcout << "i.e.," << std::endl;
-  std::wcout << __wargv[0] << " /path/to/movie.mp4 1" << std::endl << std::endl;
+  std::wcout << __wargv[0] << " /path/to/movie.mp4 1 0" << std::endl << std::endl;
+
+  std::wcout << "----- sync type -----" << std::endl;
+  std::wcout << "0 : sync audio clock." << std::endl;
+  std::wcout << "1 : sync video clock." << std::endl;
+  std::wcout << "2 : sync external clock." << std::endl << std::endl;
 
   // Get audio output devices.
   std::vector<std::wstring> vecAudioOutDevNames;
@@ -67,7 +85,7 @@ int wmain(int argc, wchar_t *argv[])
     return -1;
   }
 
-  if (argc != 3)
+  if (argc < 3)
   {
     usage();
     return -1;
@@ -79,20 +97,43 @@ int wmain(int argc, wchar_t *argv[])
   av_log_set_callback(myLogCallback);
 #endif
 
+  Options opt;
+
+  // Output audio device.
   std::vector<std::wstring> vecAudioOutDevNames;
   int deviceNum = getOutputAudioDeviceList(vecAudioOutDevNames);
-  int outputAudioDevIndex = std::stoi(argv[2]);
-  if (deviceNum < outputAudioDevIndex)
+  opt.audioIndex = std::stoi(argv[2]);
+  if (deviceNum < opt.audioIndex)
   {
     std::cerr << "Failed to input audio output device number." << std::endl;
     usage();
     return -1;
   }
 
-  std::unique_ptr<VideoReader> videoReader = std::make_unique<VideoReader>();
+  // Sync type
+  if (argc >= 3)
+  {
+    opt.syncType = std::stoi(argv[3]);
+    if (opt.syncType < 0 || opt.syncType > 3)
+    {
+      std::cerr << "Failed to set sync type." << std::endl;
+      usage();
+      return -1;
+    }
+  }
+
+  // Create filename
   std::wstring wsFilename = std::wstring(argv[1]);
   std::string filename = wstringToString(wsFilename);
-  videoReader->start(filename, outputAudioDevIndex);
+
+  // Create VideoState
+  std::shared_ptr<VideoState> videoState = std::make_shared<VideoState>();
+  videoState->filename = filename;
+  videoState->av_sync_type = (SYNC_TYPE)opt.syncType;
+
+  // Create VideoReader
+  std::unique_ptr<VideoReader> videoReader = std::make_unique<VideoReader>();
+  videoReader->start(videoState.get(), opt.audioIndex);
   while(1)
   {
     std::chrono::milliseconds duration(1000);

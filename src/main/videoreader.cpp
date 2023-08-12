@@ -7,7 +7,7 @@
 VideoReader::VideoReader()
   : m_videoDecoder(nullptr)
   , m_videoRenderer(nullptr)
-  , m_videoState(new VideoState())
+  , m_videoState(nullptr)
 {
 }
 
@@ -15,27 +15,22 @@ VideoReader::~VideoReader()
 {
 }
 
-int VideoReader::start(const std::string filename, const int audioDeviceIndex)
+int VideoReader::start(VideoState* videoState, const int audioDeviceIndex)
 {
-  if (m_videoState == nullptr)
+  if (videoState == nullptr)
   {
     return -1;
   }
-
-  // set filename
-  m_videoState->filename = filename;
+  m_videoState = videoState;
 
   // set output audio device index
   m_videoState->output_audio_device_index = audioDeviceIndex;
 
-  // set clock
-  m_videoState->av_sync_type = SYNC_TYPE::AV_SYNC_EXTERNAL_MASTER;
-
   // start read thread
   std::thread([&](VideoReader *reader)
-    {
-      reader->readThread(m_videoState);
-    }, this).detach();
+  {
+    reader->readThread(m_videoState);
+  }, this).detach();
 
   return 0;
 }

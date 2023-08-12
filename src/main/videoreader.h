@@ -32,7 +32,7 @@ public:
   explicit VideoReader();
   ~VideoReader();
 
-  int start(const std::string filename, const int audioDeviceIndex);
+  int start(VideoState* videoState, const int audioDeviceIndex);
   int quitStatus() { return m_videoState->quit; }
 
 private:
