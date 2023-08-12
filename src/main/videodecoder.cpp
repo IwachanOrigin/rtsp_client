@@ -172,7 +172,6 @@ int64_t VideoDecoder::guessCorrectPts(AVCodecContext *ctx, int64_t reordered_pts
 
 double VideoDecoder::syncVideo(VideoState *videoState, AVFrame *src_frame, double pts)
 {
-
   double frame_delay = 0.0;
 
   if (pts!= 0)

@@ -145,13 +145,24 @@ int VideoRenderer::displayThread()
       break;
     }
   }
+#if 0
+  if (m_videoState->texture)
+  {
+    SDL_DestroyTexture(m_videoState->texture);
+    m_videoState->texture = nullptr;
+  }
+  if (m_videoState->renderer)
+  {
+    SDL_DestroyRenderer(m_videoState->renderer);
+    m_videoState->renderer = nullptr;
+  }
+#endif
+  if (m_screen)
+  {
+    SDL_DestroyWindow(m_screen);
+    m_screen = nullptr;
+  }
 
-  SDL_DestroyTexture(m_videoState->texture);
-  m_videoState->texture = nullptr;
-  SDL_DestroyRenderer(m_videoState->renderer);
-  m_videoState->renderer = nullptr;
-  SDL_DestroyWindow(m_screen);
-  m_screen = nullptr;
   m_videoState->quit = 1;
   m_videoState = nullptr;
 
@@ -171,7 +182,7 @@ void VideoRenderer::scheduleRefresh(int delay)
 void VideoRenderer::videoRefreshTimer()
 {
   // We will later see how to property use this
-  VideoPicture *videoPicture;
+  VideoPicture *videoPicture = nullptr;
 
   // Used for video frames display delay and audio video sync
   double pts_delay = 0;

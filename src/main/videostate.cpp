@@ -44,6 +44,39 @@ VideoState::VideoState()
 
 VideoState::~VideoState()
 {
+  if (pFormatCtx)
+  {
+    // Close the opened input avformatcontext
+    avformat_close_input(&pFormatCtx);
+    avformat_free_context(pFormatCtx);
+    pFormatCtx = nullptr;
+  }
+  // Clear queue
+  videoq.clear();
+  audioq.clear();
+
+  if (audio_ctx)
+  {
+    avcodec_free_context(&audio_ctx);
+    audio_ctx = nullptr;
+  }
+
+  if (video_ctx)
+  {
+    avcodec_free_context(&video_ctx);
+    video_ctx = nullptr;
+  }
+
+  if (texture)
+  {
+    SDL_DestroyTexture(texture);
+    texture = nullptr;
+  }
+  if (renderer)
+  {
+    SDL_DestroyRenderer(renderer);
+    renderer = nullptr;
+  }
 }
 
 void VideoState::allocPicture()

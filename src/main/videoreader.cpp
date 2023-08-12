@@ -271,31 +271,8 @@ fail:
 
     if (packet)
     {
-      av_packet_free(&packet);
+      packet = nullptr;
     }
-    packet = nullptr;
-
-    if (pFormatCtx)
-    {
-      // Close the opened input avformatcontext
-      avformat_close_input(&pFormatCtx);
-    }
-    pFormatCtx = nullptr;
-    // Clear queue
-    videoState->videoq.clear();
-    videoState->audioq.clear();
-
-    if (videoState->audio_ctx)
-    {
-      avcodec_free_context(&videoState->audio_ctx);
-    }
-    videoState->audio_ctx = nullptr;
-
-    if (videoState->video_ctx)
-    {
-      avcodec_free_context(&videoState->video_ctx);
-    }
-    videoState->video_ctx = nullptr;
   }
   return 0;
 }
