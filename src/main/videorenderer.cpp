@@ -33,6 +33,7 @@ int VideoRenderer::start(VideoState *videoState)
     std::thread([&](VideoRenderer *vr)
     {
       vr->displayThread();
+
     }, this).detach();
   }
   else

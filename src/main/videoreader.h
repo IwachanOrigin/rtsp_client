@@ -9,6 +9,7 @@
 #include "audiodecoder.h"
 #include "audioresamplingstate.h"
 #include "videorenderer.h"
+#include "options.h"
 
 extern "C"
 {
@@ -32,7 +33,7 @@ public:
   explicit VideoReader();
   ~VideoReader();
 
-  int start(VideoState* videoState, const int audioDeviceIndex);
+  int start(VideoState* videoState, const Options& opt);
   int quitStatus() { return m_videoState->quit; }
 
 private:
@@ -41,7 +42,7 @@ private:
   VideoState* m_videoState;
 
   int streamComponentOpen(VideoState *videoState, int stream_index);
-  int readThread(void *arg);
+  int readThread(void *arg, const Options& opt);
   static int decodeInterruptCB(void *videoState);
 };
 

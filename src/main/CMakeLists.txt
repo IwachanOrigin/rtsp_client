@@ -20,6 +20,7 @@ set(main_src
   timer.h
   myavpacketlist.h
   stringhelper.h
+  options.h
 )
 
 add_executable(

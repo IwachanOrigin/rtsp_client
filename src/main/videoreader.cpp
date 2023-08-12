@@ -15,7 +15,7 @@ VideoReader::~VideoReader()
 {
 }
 
-int VideoReader::start(VideoState* videoState, const int audioDeviceIndex)
+int VideoReader::start(VideoState* videoState, const Options& opt)
 {
   if (videoState == nullptr)
   {
@@ -24,18 +24,18 @@ int VideoReader::start(VideoState* videoState, const int audioDeviceIndex)
   m_videoState = videoState;
 
   // set output audio device index
-  m_videoState->output_audio_device_index = audioDeviceIndex;
+  m_videoState->output_audio_device_index = opt.audioIndex;
 
   // start read thread
-  std::thread([&](VideoReader *reader)
+  std::thread([&](VideoReader *reader, const Options& opt)
   {
-    reader->readThread(m_videoState);
-  }, this).detach();
+    reader->readThread(m_videoState, opt);
+  }, this, opt).detach();
 
   return 0;
 }
 
-int VideoReader::readThread(void *arg)
+int VideoReader::readThread(void *arg, const Options& opt)
 {
   int ret = -1;
 
@@ -60,19 +60,40 @@ int VideoReader::readThread(void *arg)
   pFormatCtx->interrupt_callback.callback = decodeInterruptCB;
   pFormatCtx->interrupt_callback.opaque = videoState;
 
-#if 0
-  // 'scan_all_pmts' is an option primarily related to streaming MPEG-TS and reading files.
-  // When enabled, all PMTs are scanned, not just the first PMT.
-  // For MPEG-TS with multiple PMTs, all stream information can be retrieved.
-  // This option is always set in ffplay.
-  av_dict_set(&options, "scan_all_pmts", "1", AV_DICT_DONT_OVERWRITE);
-#endif
+  if (opt.scanAllPmts)
+  {
+    // 'scan_all_pmts' is an option primarily related to streaming MPEG-TS and reading files.
+    // When enabled, all PMTs are scanned, not just the first PMT.
+    // For MPEG-TS with multiple PMTs, all stream information can be retrieved.
+    // This option is always set in ffplay.
+    av_dict_set(&options, "scan_all_pmts", "1", AV_DICT_DONT_OVERWRITE);
+  }
 
-#if 0
-  // 'rtsp_transport' sets the receive protocol for the RTSP stream.
-  // The default is to use UDP.
-  av_dict_set(&options, "rtsp_transport", "tcp", 0);
-#endif
+  if (opt.rtspTransport)
+  {
+    // 'rtsp_transport' sets the receive protocol for the RTSP stream.
+    // The default is to use UDP.
+    av_dict_set(&options, "rtsp_transport", "tcp", 0);
+  }
+
+  if (opt.maxDelay > 0)
+  {
+    // Sets the maximum delay time.
+    // The unit is us.
+    av_dict_set(&options, "max_delay", std::to_string(opt.maxDelay).c_str(), 0);
+  }
+
+  if (opt.stimeout > 0)
+  {
+    // set timeout (in microseconds) of socket TCP I/O operations.
+    av_dict_set(&options, "stimeout", std::to_string(opt.stimeout).c_str(), 0);
+  }
+
+  if (opt.bufferSize > 0)
+  {
+    // Underlying protocol send/receive buffer size.
+    av_dict_set(&options, "buffer_size", std::to_string(opt.bufferSize).c_str(), 0);
+  }
 
   ret = avformat_open_input(&pFormatCtx, videoState->filename.c_str(), nullptr, &options);
   if (ret < 0)
