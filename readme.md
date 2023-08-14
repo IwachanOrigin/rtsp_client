@@ -70,7 +70,7 @@ Follow the steps below to install from PPA.
 The following output would be obtained.  
 [Installed:] is already installed.  
 
--------------------------------------------------------------------------------------------------------------
+<pre>
 libavcodec-dev:
   Installed: 7:6.0-1build8~22.04
   Candidate: 7:6.0-1build8~22.04
@@ -87,7 +87,7 @@ libavcodec-dev:
         500 http://security.ubuntu.com/ubuntu jammy-security/universe amd64 Packages
      7:4.4.1-3ubuntu5 500
         500 http://archive.ubuntu.com/ubuntu jammy/universe amd64 Packages
--------------------------------------------------------------------------------------------------------------
+</pre>
 
 5. Install the required version.  
 Only three are specified, but the other libav... are dependencies and will be installed on their own.  
