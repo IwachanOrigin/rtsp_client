@@ -7,6 +7,7 @@ RTSP client using SDL2 and ffmpeg 6.0.
 
 ## Demo
 
+![demo.gif](assets/demo.gif)  
 
 
 ## Dependency
