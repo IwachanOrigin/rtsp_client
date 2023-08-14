@@ -11,6 +11,7 @@
 #include "videoreader.h"
 #include "stringhelper.h"
 #include "options.h"
+#include "version.h"
 
 #undef main
 
@@ -29,6 +30,14 @@ static inline int getOutputAudioDeviceList(std::vector<std::wstring> &vec)
 
 static inline void usage(const std::wstring& wsProgName)
 {
+  // Display version of this software.
+  std::wcout << wsProgName
+            << " v" << SOFTWARE_VERSION_MAJOR
+            << "." << SOFTWARE_VERSION_MINOR
+            << "." << SOFTWARE_VERSION_PATCH
+            << " " << SOFTWARE_GIT_SHA1_VAL
+            << std::endl << std::endl;
+
   // Output command line parameter.
   std::wcout << wsProgName
              << " <rtsp url>"
