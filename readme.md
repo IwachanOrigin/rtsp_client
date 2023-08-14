@@ -134,5 +134,5 @@ i.e, build/Debug/rtspClient.exe rtsp://username:password/IP_ADDRESS:554/stream 0
 Options are available for this software according to several arguments.  
 The following parameters are available.  
 
-![arguments](./assets/arguments.png)
+![arguments](assets/arguments.png)
 
