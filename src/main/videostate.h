@@ -3,6 +3,7 @@
 #define VIDEO_STATE_H_
 
 #include <string>
+#include <memory>
 #include "packetqueue.h"
 #include "videopicture.h"
 

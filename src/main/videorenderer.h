@@ -13,8 +13,8 @@ public:
   int start(VideoState *videoState);
 
 private:
-  VideoState *m_videoState;
-  SDL_Window *m_screen;
+  VideoState* m_videoState;
+  SDL_Window* m_screen;
 
   int displayThread();
   void scheduleRefresh(int delay);

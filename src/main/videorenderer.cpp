@@ -23,6 +23,11 @@ VideoRenderer::VideoRenderer()
 
 VideoRenderer::~VideoRenderer()
 {
+  if (m_screen)
+  {
+    SDL_DestroyWindow(m_screen);
+    m_screen = nullptr;
+  }
 }
 
 int VideoRenderer::start(VideoState *videoState)
@@ -145,18 +150,7 @@ int VideoRenderer::displayThread()
       break;
     }
   }
-#if 0
-  if (m_videoState->texture)
-  {
-    SDL_DestroyTexture(m_videoState->texture);
-    m_videoState->texture = nullptr;
-  }
-  if (m_videoState->renderer)
-  {
-    SDL_DestroyRenderer(m_videoState->renderer);
-    m_videoState->renderer = nullptr;
-  }
-#endif
+
   if (m_screen)
   {
     SDL_DestroyWindow(m_screen);

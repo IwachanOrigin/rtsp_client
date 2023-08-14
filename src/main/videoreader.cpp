@@ -319,7 +319,7 @@ int VideoReader::streamComponentOpen(VideoState *videoState, int stream_index)
     wants.channels = codecCtx->ch_layout.nb_channels;
     wants.silence = 0;
     wants.samples = SDL_AUDIO_BUFFER_SIZE;
-    wants.callback = audio_callback;
+    wants.callback = audioCallback;
     wants.userdata = videoState;
 
     // open audio device

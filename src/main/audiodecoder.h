@@ -26,9 +26,11 @@ extern "C"
 #define AUDIO_DIFF_AVG_NB     20
 #define SAMPLE_CORRECTION_PERCENT_MAX 10
 
-void audio_callback(void *userdata, Uint8 *stream, int len);
-int audio_decode_frame(VideoState *videoState, uint8_t *audio_buf, int buf_size, double *pts_ptr);
-static int audio_resampling(VideoState *videoState, AVFrame *decoded_audio_frame, enum AVSampleFormat out_sample_fmt, uint8_t *out_buf);
-int synchronize_audio(VideoState *videoState, short *samples, int samples_size);
+void audioCallback(void *userdata, Uint8 *stream, int len);
+int audioDecodeFrame(VideoState *videoState, uint8_t *audio_buf, int buf_size, double *pts_ptr);
+static int audioResampling(VideoState *videoState, AVFrame *decoded_audio_frame, enum AVSampleFormat out_sample_fmt, uint8_t *out_buf);
+int syncAudio(VideoState *videoState, short *samples, int samples_size);
+
+void releasePointer(AudioReSamplingState& arState);
 
 #endif // AUDIO_DECODER_H_
