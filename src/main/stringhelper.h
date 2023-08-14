@@ -2,10 +2,16 @@
 #ifndef STRING_HELPER_H_
 #define STRING_HELPER_H_
 
-#include <string>
-#include <cstdlib>
 #ifdef _WIN32
+// Win
 #include <Windows.h>
+#include <string>
+#else
+// Linux
+#include <cstdlib>
+#include <cstring>
+#include <cwchar>
+#include <errno.h>
 #endif
 
 namespace
@@ -34,21 +40,21 @@ namespace
     ::MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, (LPWSTR)pUnicode, unicodeLen);
     std::wstring rt;
     rt = (wchar_t*)pUnicode;
-    delete pUnicode;
+    delete[] pUnicode;
     return rt;
   }
 #else
-  const int UNICODELEN_MAX_SIZE = 256;
-
   template <class T>
   std::string wstringToString(T ws)
   {
-    // wstring to UTF8
-    int iBufferSize = WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, (char*)NULL, 0, NULL, NULL);
-    char* cpMultiByte = new char[iBufferSize];
-    // wstring to UTF8
-    WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, cpMultiByte, iBufferSize, NULL, NULL);
-    std::string oRet(cpMultiByte, cpMultiByte + iBufferSize - 1);
+    std::mbstate_t state = std::mbstate_t();
+    auto temp = ws.c_str();
+    size_t len = std::wcsrtombs(NULL, &temp, 0, &state);
+    char* cpMultiByte = new char[len + 1];
+    std::memset(cpMultiByte, 0, (len + 1) * sizeof(char));
+    std::wcsrtombs(cpMultiByte, &temp, len, &state);
+    std::string oRet;
+    oRet = (char*)cpMultiByte;
     delete[] cpMultiByte;
     return oRet;
   }
@@ -56,17 +62,18 @@ namespace
   template <class T>
   std::wstring UTF8ToUnicode(T str)
   {
-    wchar_t* pUnicode = new wchar_t[UNICODELEN_MAX_SIZE + 1];
-    std::memset(pUnicode, 0, (UNICODELEN_MAX_SIZE + 1) * sizeof(wchar_t));
-    size_t convBufSize = 0;
-    errno_t err = mbstowcs_s(&convBufSize, pUnicode, UNICODELEN_MAX_SIZE + 1, str.c_str(), str.size(), _TRUNCATE);
+    std::mbstate_t state = std::mbstate_t();
+    auto temp = str.c_str();
+    size_t len = std::mbsrtowcs(NULL, &temp, 0, &state);
+    wchar_t* pUnicode = new wchar_t[len + 1];
+    memset(pUnicode, 0, (len + 1) * sizeof(wchar_t));
+    std::mbsrtowcs(pUnicode, &temp, len, &state);
     std::wstring rt;
     rt = (wchar_t*)pUnicode;
-    delete pUnicode;
+    delete[] pUnicode;
     return rt;
   }
 #endif
 }
-
 
 #endif // STRING_HELPER_H_

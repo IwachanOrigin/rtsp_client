@@ -12,6 +12,8 @@
 #include "stringhelper.h"
 #include "options.h"
 
+#undef main
+
 static inline int getOutputAudioDeviceList(std::vector<std::wstring> &vec)
 {
   int deviceNum = SDL_GetNumAudioDevices(0);
@@ -83,7 +85,7 @@ void myLogCallback(void* ptr, int level, const char* fmt, va_list vargs)
   vprintf(fmt, vargs);
 }
 
-int wmain(int argc, wchar_t *argv[])
+int main(int argc, char *argv[])
 {
   // Set locale(use to the system default locale)
   std::wcout.imbue(std::locale(""));
@@ -195,8 +197,7 @@ int wmain(int argc, wchar_t *argv[])
   }
 
   // Create filename
-  std::wstring wsFilename = std::wstring(argv[1]);
-  std::string filename = wstringToString(wsFilename);
+  std::string filename = std::string(argv[1]);
 
   // Create VideoState
   std::shared_ptr<VideoState> videoState = std::make_shared<VideoState>();

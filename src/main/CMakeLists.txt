@@ -17,7 +17,6 @@ set(main_src
   videostate.cpp
   videorenderer.h
   videorenderer.cpp
-  timer.h
   myavpacketlist.h
   stringhelper.h
   options.h
