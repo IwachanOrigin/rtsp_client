@@ -305,7 +305,7 @@ void VideoRenderer::videoDisplay()
     //int flags = SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS | SDL_WINDOW_TOOLTIP;
     int flags = SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE;
     m_screen = SDL_CreateWindow(
-      "display"
+      "RTSP Client"
       , SDL_WINDOWPOS_UNDEFINED
       , SDL_WINDOWPOS_UNDEFINED
       , m_videoState->video_ctx->width / 2
