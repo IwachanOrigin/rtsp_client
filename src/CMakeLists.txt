@@ -24,6 +24,27 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(GLOBAL PROPERTY AUTOGEN_TARGETS_FOLDER AutoGenFiles)
 set_property(GLOBAL PROPERTY AUTOGEN_SOURCE_GROUP AutoGenFiles)
 
+find_package(Git REQUIRED)
+
+# Define the version numbers
+set(SOFTWARE_VERSION_MAJOR 1)
+set(SOFTWARE_VERSION_MINOR 0)
+set(SOFTWARE_VERSION_PATCH 0)
+
+# Get git hash
+execute_process(
+  COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_SHA1
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Configure version.h.in to create version.h
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/version.h.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/version.h
+)
+
 if (WIN32)
   if(DEFINED FFMPEG_PATH)
     set(CMAKE_PREFIX_PATH ${FFMPEG_PATH})
@@ -55,8 +76,12 @@ if (WIN32)
     ${SDL2_BINDIR}/SDL2.dll
   )
 
-  # Set the ffmpeg, sdl2 include directory
-  include_directories(${FFMPEG_PATH_INC} ${SDL2_INCLUDE_DIRS})
+  # Set the ffmpeg, sdl2, version.h include directory
+  include_directories(
+    ${FFMPEG_PATH_INC}
+    ${SDL2_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR} # For version.h
+  )
 else()
   # Linux
   find_package(PkgConfig REQUIRED)
@@ -73,8 +98,12 @@ else()
     libswscale
   )
   find_package(SDL2 REQUIRED)
-  # Set the ffmpeg, sdl2 include directory
-  include_directories(${FFMPEG_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS})
+  # Set the ffmpeg, sdl2, version.h include directory
+  include_directories(
+    ${FFMPEG_INCLUDE_DIRS}
+    ${SDL2_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR} # For version.h
+  )
 endif()
 
 add_subdirectory(main)
