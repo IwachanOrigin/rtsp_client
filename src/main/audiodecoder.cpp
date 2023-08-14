@@ -203,10 +203,10 @@ int audioDecodeFrame(VideoState *videoState, uint8_t *audio_buf, int buf_size, d
   return 0;
 }
 
-int audioResampling(VideoState *videoState
-                    , AVFrame *decoded_audio_frame
+int audioResampling(VideoState* videoState
+                    , AVFrame* decoded_audio_frame
                     , enum AVSampleFormat out_sample_fmt
-                    , uint8_t *out_buf)
+                    , uint8_t* out_buf)
 {
   // get an instance of the audioresamplingstate struct
   AudioReSamplingState arState;
@@ -223,6 +223,7 @@ int audioResampling(VideoState *videoState
   // check input audio channels correctly retrieved
   if (arState.in_channel_layout <= 0)
   {
+    releasePointer(arState);
     return -1;
   }
 
@@ -245,6 +246,7 @@ int audioResampling(VideoState *videoState
   if (arState.in_nb_samples <= 0)
   {
     printf("in_nb_samples error.\n");
+    releasePointer(arState);
     return -1;
   }
 
@@ -262,6 +264,7 @@ int audioResampling(VideoState *videoState
   if (ret < 0)
   {
     printf("Failed to initialize the resampling context.\n");
+    releasePointer(arState);
     return -1;
   }
 
@@ -276,6 +279,7 @@ int audioResampling(VideoState *videoState
   if (arState.max_out_nb_samples <= 0)
   {
     printf("av_rescale_rnd error.\n");
+    releasePointer(arState);
     return -1;
   }
 
@@ -294,6 +298,7 @@ int audioResampling(VideoState *videoState
   if (ret < 0)
   {
     printf("av_samples_alloc_array_and_samples() error: Could not allocate destination samples.\n");
+    releasePointer(arState);
     return -1;
   }
 
@@ -308,6 +313,7 @@ int audioResampling(VideoState *videoState
   // check output samples number was correctly retrieved
   if (arState.out_nb_samples <= 0)
   {
+    releasePointer(arState);
     return -1;
   }
 
@@ -330,9 +336,9 @@ int audioResampling(VideoState *videoState
     if (ret < 0)
     {
       printf("av_samples_alloc failed.\n");
+      releasePointer(arState);
       return -1;
     }
-
     arState.max_out_nb_samples = arState.out_nb_samples;
   }
 
@@ -350,6 +356,7 @@ int audioResampling(VideoState *videoState
     if (ret < 0)
     {
       printf("swr_convert_error.\n");
+      releasePointer(arState);
       return -1;
     }
 
@@ -365,12 +372,14 @@ int audioResampling(VideoState *videoState
     if (arState.resampled_data_size < 0)
     {
       printf("av_samples_get_buffer_size error.\n");
+      releasePointer(arState);
       return -1;
     }
   }
   else
   {
     printf("swr_ctx null error.\n");
+    releasePointer(arState);
     return -1;
   }
 
