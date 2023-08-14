@@ -65,7 +65,7 @@ Follow the steps below to install from PPA.
 sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg6
 ```
 
-2. update.  
+2. Update.  
 
 ``` shell
 sudo apt update
