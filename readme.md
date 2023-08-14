@@ -41,8 +41,10 @@ RTSP client using SDL2 and ffmpeg 6.0.
 Install to libsdl2-dev.  
 Please run to below command.  
 
-    sudo apt install libsdl2-dev  
-    sudo apt install libsdl2-image-dev libsdl2-mixer-dev libsdl2-net-dev libsdl2-ttf-dev  
+``` shell
+sudo apt install libsdl2-dev  
+sudo apt install libsdl2-image-dev libsdl2-mixer-dev libsdl2-net-dev libsdl2-ttf-dev  
+```
 
 #### FFMPEG
 
@@ -54,20 +56,26 @@ Follow the steps below to install from PPA.
 1. Add a ffmpeg 6.0 PPA.  
 
 ``` shell
-    sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg6
+sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg6
 ```
 
 2. update.  
 
-    sudo apt update  
+``` shell
+sudo apt update
+```
 
 3. Install ffmpeg 6.0.  
 
-    sudo apt install ffmpeg
+``` shell
+sudo apt install ffmpeg
+```
 
 4. Check for installable 'libav...'.  
 
-    apt policy libavcodec-dev libavfilter-dev libavformat-dev libavutil-dev libavdevice-dev libswscale-dev libswresample-dev  
+``` shell
+apt policy libavcodec-dev libavfilter-dev libavformat-dev libavutil-dev libavdevice-dev libswscale-dev libswresample-dev  
+```
 
 The following output would be obtained.  
 [Installed:] is already installed.  
@@ -94,11 +102,15 @@ libavcodec-dev:
 5. Install the required version.  
 Only three are specified, but the other libav... are dependencies and will be installed on their own.  
 
-    sudo apt install libavformat-dev=7:6.0-1build8~22.04 libavfilter-dev=7:6.0-1build8~22.04 libavdevice-dev=7:6.0-1build8~22.04  
+``` shell
+sudo apt install libavformat-dev=7:6.0-1build8~22.04 libavfilter-dev=7:6.0-1build8~22.04 libavdevice-dev=7:6.0-1build8~22.04  
+```
 
 6. Confirm that everything has been installed.  
 
-    apt policy libavcodec-dev libavfilter-dev libavformat-dev libavutil-dev libavdevice-dev libswscale-dev libswresample-dev  
+``` shell
+apt policy libavcodec-dev libavfilter-dev libavformat-dev libavutil-dev libavdevice-dev libswscale-dev libswresample-dev  
+```
 
 ## Build
 
@@ -107,23 +119,29 @@ Only three are specified, but the other libav... are dependencies and will be in
 Ninja + LLVM 16.0  
 powershell.exe cmake -S . -B build -G "\"Ninja Multi-Config"\" -D FFMPEG_PATH="/path/to/ffmpeg" -D SDL2_PATH="/path/to/sdl2"  
 
-    cd src  
-    powershell.exe cmake -S . -B build -G "\"Ninja Multi-Config"\" -D FFMPEG_PATH="C:\software\ffmpeg-n6.0-latest-win64-lgpl-shared-6.0" -D SDL2_PATH="C:\software\sdl2\SDL2-devel-2.26.5-vc"  
-    powershell.exe cmake --build build  
+``` shell
+cd src  
+powershell.exe cmake -S . -B build -G "\"Ninja Multi-Config"\" -D FFMPEG_PATH="C:\software\ffmpeg-n6.0-latest-win64-lgpl-shared-6.0" -D SDL2_PATH="C:\software\sdl2\SDL2-devel-2.26.5-vc"  
+powershell.exe cmake --build build  
+```
 
 MSVC(Default)  
 
-    cd src
-    powershell.exe cmake -S . -B build  
-    powershell.exe cmake --build build  
+``` shell
+cd src
+powershell.exe cmake -S . -B build  
+powershell.exe cmake --build build  
+```
 
 ### For Ubuntu(22.04 LTS)
 
 GCC 11.4.0(Ubuntu 11.4.0-1ubuntu1~22.04)
 
-    cd src  
-    cmake -S . -B build  
-    cmake --build build  
+``` shell
+cd src  
+cmake -S . -B build  
+cmake --build build  
+```
 
 ## How to use
 
