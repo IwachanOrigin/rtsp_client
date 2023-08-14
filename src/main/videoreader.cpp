@@ -8,6 +8,7 @@ VideoReader::VideoReader()
   : m_videoDecoder(nullptr)
   , m_videoRenderer(nullptr)
   , m_videoState(nullptr)
+  , m_deviceID(0)
 {
 }
 
@@ -45,7 +46,6 @@ int VideoReader::readThread(void *arg, const Options& opt)
 
   int videoStream = -1;
   int audioStream = -1;
-  AVPacket* packet = nullptr;
 
   AVFormatContext* pFormatCtx = nullptr;
   AVDictionary* options = nullptr;
@@ -142,7 +142,8 @@ int VideoReader::readThread(void *arg, const Options& opt)
   if (videoStream == -1)
   {
     std::cerr << "Could not open video stream" << std::endl;
-    goto fail;
+    this->releasePointer();
+    return -1;
   }
   else
   {
@@ -151,7 +152,8 @@ int VideoReader::readThread(void *arg, const Options& opt)
     if (ret < 0)
     {
       std::cerr << "Could not find video codec" << std::endl;
-      goto fail;
+      this->releasePointer();
+      return -1;
     }
 
     m_videoRenderer = new VideoRenderer();
@@ -162,7 +164,8 @@ int VideoReader::readThread(void *arg, const Options& opt)
   if (audioStream == -1)
   {
     std::cerr << "Could not find audio stream" << std::endl;
-    goto fail;
+    this->releasePointer();
+    return -1;
   }
   else
   {
@@ -171,20 +174,23 @@ int VideoReader::readThread(void *arg, const Options& opt)
     if (ret < 0)
     {
       std::cerr << "Could not find audio codec" << std::endl;
-      goto fail;
+      this->releasePointer();
+      return -1;
     }
   }
   if (videoState->videoStream < 0 || videoState->audioStream < 0)
   {
     std::cerr << "Could not open codecs " << videoState->filename << std::endl;
-    goto fail;
+    this->releasePointer();
+    return -1;
   }
 
-  packet = av_packet_alloc();
-  if (packet == nullptr)
+  m_packet = av_packet_alloc();
+  if (m_packet == nullptr)
   {
     std::cerr << "Could not alloc packet" << std::endl;
-    goto fail;
+    this->releasePointer();
+    return -1;
   }
 
   // Main decode loop. read in a packet and put it on the queue
@@ -204,7 +210,7 @@ int VideoReader::readThread(void *arg, const Options& opt)
       continue;
     }
     // Read data from the AVFormatContext by repeatedly calling av_read_frame
-    ret = av_read_frame(videoState->pFormatCtx, packet);
+    ret = av_read_frame(videoState->pFormatCtx, m_packet);
     if (ret < 0)
     {
       if (ret == AVERROR_EOF)
@@ -233,18 +239,18 @@ int VideoReader::readThread(void *arg, const Options& opt)
     }
 
     // Put the packet in the appropriate queue
-    if (packet->stream_index == videoState->videoStream)
+    if (m_packet->stream_index == videoState->videoStream)
     {
-      videoState->videoq.put(packet);
+      videoState->videoq.put(m_packet);
     }
-    else if (packet->stream_index == videoState->audioStream)
+    else if (m_packet->stream_index == videoState->audioStream)
     {
-      videoState->audioq.put(packet);
+      videoState->audioq.put(m_packet);
     }
     else
     {
       // Otherwise free the memory
-      av_packet_unref(packet);
+      av_packet_unref(m_packet);
     }
   }
 
@@ -254,26 +260,7 @@ int VideoReader::readThread(void *arg, const Options& opt)
     SDL_Delay(100);
   }
 
-fail:
-  {
-    // Device stop, memory release
-    if (deviceID > 0)
-    {
-      SDL_LockAudioDevice(deviceID);
-      SDL_PauseAudioDevice(deviceID, 1);
-      SDL_UnlockAudioDevice(deviceID);
-
-      SDL_CloseAudioDevice(deviceID);
-    }
-    deviceID = 0;
-
-    SDL_Quit();
-
-    if (packet)
-    {
-      packet = nullptr;
-    }
-  }
+  this->releasePointer();
   return 0;
 }
 
@@ -323,8 +310,8 @@ int VideoReader::streamComponentOpen(VideoState *videoState, int stream_index)
     wants.userdata = videoState;
 
     // open audio device
-    deviceID = SDL_OpenAudioDevice(SDL_GetAudioDeviceName(m_videoState->output_audio_device_index, 0), false, &wants, &spec, 0);
-    if (deviceID <= 0)
+    m_deviceID = SDL_OpenAudioDevice(SDL_GetAudioDeviceName(m_videoState->output_audio_device_index, 0), false, &wants, &spec, 0);
+    if (m_deviceID <= 0)
     {
       ret = -1;
       return -1;
@@ -356,7 +343,7 @@ int VideoReader::streamComponentOpen(VideoState *videoState, int stream_index)
       videoState->audioq.init();
 
       // start playing audio device
-      SDL_PauseAudioDevice(deviceID, 0);
+      SDL_PauseAudioDevice(m_deviceID, 0);
     }
     break;
 
@@ -405,8 +392,30 @@ int VideoReader::streamComponentOpen(VideoState *videoState, int stream_index)
   return 0;
 }
 
+void VideoReader::releasePointer()
+{
+  // Device stop, memory release
+  if (m_deviceID > 0)
+  {
+    SDL_LockAudioDevice(m_deviceID);
+    SDL_PauseAudioDevice(m_deviceID, 1);
+    SDL_UnlockAudioDevice(m_deviceID);
+
+    SDL_CloseAudioDevice(m_deviceID);
+  }
+  m_deviceID = 0;
+
+  SDL_Quit();
+
+  if (m_packet)
+  {
+    m_packet = nullptr;
+  }
+}
+
 int VideoReader::decodeInterruptCB(void* videoState)
 {
   VideoState* is = (VideoState*)videoState;
   return is->quit;
 }
+

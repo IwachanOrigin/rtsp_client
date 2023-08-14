@@ -25,8 +25,6 @@ extern "C"
 #include <SDL_thread.h>
 }
 
-static int deviceID = 0;
-
 class VideoReader
 {
 public:
@@ -40,9 +38,12 @@ private:
   VideoDecoder* m_videoDecoder;
   VideoRenderer* m_videoRenderer;
   VideoState* m_videoState;
+  int m_deviceID;
+  AVPacket* m_packet;
 
   int streamComponentOpen(VideoState *videoState, int stream_index);
   int readThread(void *arg, const Options& opt);
+  void releasePointer();
   static int decodeInterruptCB(void *videoState);
 };
 
