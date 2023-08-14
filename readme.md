@@ -10,6 +10,11 @@ RTSP client using SDL2 and ffmpeg 6.0.
 ![demo.gif](assets/demo.gif)  
 
 
+## Verified PTZ Cameras
+
+    - Tapo c200  
+    - JENNOV P31  
+
 ## Dependency
 
     - SDL2 2.26.5+  
