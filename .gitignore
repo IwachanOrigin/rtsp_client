@@ -1,18 +1,10 @@
 
 compile_commands.json
-
-.cache/
-
-build/
-
+version.h
 *.user
 
+.cache/
+build/
 x64/
-
 .vs/
 
-_assets/
-
-videoPS.h
-
-videoVS.h
