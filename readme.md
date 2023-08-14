@@ -156,3 +156,40 @@ The following parameters are available.
 
 ![arguments](assets/arguments.png)
 
+### sync type
+
+Specify the clock to be used for synchronization.  
+0 : sync audio clock. Default value.  
+1 : sync video clock.  
+2 : sync external clock.  
+
+### scan all pmts
+
+This is an option primarily related to streaming MPEG-TS and reading files.  
+When enabled, all PMTs are scanned, not just the first PMT.  
+For MPEG-TS with multiple PMTs, all stream information can be retrieved.  
+
+0 : OFF. Default value.  
+1 : ON.  
+
+### rtsp transport
+
+This sets the receive protocol for the RTSP stream.  
+
+0 : Not set. Default value(udp).  
+1 : TCP.  
+
+### max delay
+
+Sets the maximum delay time.  
+The unit is us.  
+
+### stimeout
+
+Set timeout (in microseconds) of socket TCP I/O operations.  
+
+### buffer size
+
+Underlying protocol send/receive buffer size.  
+
+
