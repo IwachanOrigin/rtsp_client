@@ -1,4 +1,5 @@
 
+#include <cstring>
 #include <thread>
 #include "videoreader.h"
 

@@ -1,4 +1,5 @@
 
+#include <cstring>
 #include <thread>
 #include <cassert>
 #include "audiodecoder.h"

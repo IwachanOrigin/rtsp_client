@@ -27,10 +27,10 @@ static inline int getOutputAudioDeviceList(std::vector<std::wstring> &vec)
   return deviceNum;
 }
 
-static inline void usage()
+static inline void usage(const std::wstring& wsProgName)
 {
   // Output command line parameter.
-  std::wcout << __wargv[0]
+  std::wcout << wsProgName
              << " <rtsp url>"
              << " <output audio device index>"
              << " <sync type>"
@@ -41,7 +41,7 @@ static inline void usage()
              << " <buffer size>"
              << std::endl;
   std::wcout << "i.e.," << std::endl;
-  std::wcout << __wargv[0] << " rtsp://username:password@IP_Address:554/ch1 1 0 0 0 0 0 10000" << std::endl << std::endl;
+  std::wcout << wsProgName << " rtsp://username:password@IP_Address:554/ch1 1 0 0 0 0 0 10000" << std::endl << std::endl;
 
   std::wcout << "----- sync type -----" << std::endl;
   std::wcout << "0 : sync audio clock. Default value." << std::endl;
@@ -99,9 +99,11 @@ int main(int argc, char *argv[])
     return -1;
   }
 
+  std::string progName = std::string(argv[0]);
+  std::wstring wsProgName = UTF8ToUnicode(progName);
   if (argc < 3)
   {
-    usage();
+    usage(wsProgName);
     return -1;
   }
 
@@ -120,7 +122,7 @@ int main(int argc, char *argv[])
   if (deviceNum < opt.audioIndex)
   {
     std::cerr << "Failed to input audio output device number." << std::endl;
-    usage();
+    usage(wsProgName);
     return -1;
   }
 
@@ -131,7 +133,7 @@ int main(int argc, char *argv[])
     if (opt.syncType < 0 || opt.syncType > 3)
     {
       std::cerr << "Failed to set sync type." << std::endl;
-      usage();
+      usage(wsProgName);
       return -1;
     }
   }
@@ -143,7 +145,7 @@ int main(int argc, char *argv[])
     if (opt.scanAllPmts < 0 || opt.scanAllPmts > 1)
     {
       std::cerr << "Failed to set scan all pmts." << std::endl;
-      usage();
+      usage(wsProgName);
       return -1;
     }
   }
@@ -155,7 +157,7 @@ int main(int argc, char *argv[])
     if (opt.rtspTransport < 0 || opt.rtspTransport > 1)
     {
       std::cerr << "Failed to set rtsp transports." << std::endl;
-      usage();
+      usage(wsProgName);
       return -1;
     }
   }
@@ -167,7 +169,7 @@ int main(int argc, char *argv[])
     if (opt.maxDelay < 0)
     {
       std::cerr << "Failed to set max delay." << std::endl;
-      usage();
+      usage(wsProgName);
       return -1;
     }
   }
@@ -179,7 +181,7 @@ int main(int argc, char *argv[])
     if (opt.stimeout < 0)
     {
       std::cerr << "Failed to set stimeout." << std::endl;
-      usage();
+      usage(wsProgName);
       return -1;
     }
   }
@@ -191,7 +193,7 @@ int main(int argc, char *argv[])
     if (opt.bufferSize < 0)
     {
       std::cerr << "Failed to set buffer size." << std::endl;
-      usage();
+      usage(wsProgName);
       return -1;
     }
   }
