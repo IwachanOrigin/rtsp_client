@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
   // max delay
   if (argc > 6)
   {
-    opt.maxDelay = std::stoi(argv[7]);
+    opt.maxDelay = std::stoi(argv[6]);
     if (opt.maxDelay < 0)
     {
       std::cerr << "Failed to set max delay." << std::endl;
@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
   // stimeout
   if (argc > 7)
   {
-    opt.stimeout = std::stoi(argv[8]);
+    opt.stimeout = std::stoi(argv[7]);
     if (opt.stimeout < 0)
     {
       std::cerr << "Failed to set stimeout." << std::endl;
@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
   // buffer size
   if (argc > 8)
   {
-    opt.bufferSize = std::stoi(argv[9]);
+    opt.bufferSize = std::stoi(argv[8]);
     if (opt.bufferSize < 0)
     {
       std::cerr << "Failed to set buffer size." << std::endl;
