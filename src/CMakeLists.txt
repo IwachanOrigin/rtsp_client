@@ -47,13 +47,13 @@ configure_file(
 
 if (WIN32)
   if(DEFINED FFMPEG_PATH)
-    set(CMAKE_PREFIX_PATH ${FFMPEG_PATH})
+    list(APPEND CMAKE_PREFIX_PATH ${FFMPEG_PATH})
   else()
     message(FATAL_ERROR "!!!!!!!! FFMPEG_PATH IS NOT SET !!!!!!!!")
   endif(DEFINED FFMPEG_PATH)
 
   if(DEFINED SDL2_PATH)
-    set(CMAKE_PREFIX_PATH ${SDL2_PATH})
+    list(APPEND CMAKE_PREFIX_PATH ${SDL2_PATH})
   else()
     message(FATAL_ERROR "!!!!!!!! SDL2_PATH IS NOT SET !!!!!!!!")
   endif(DEFINED SDL2_PATH)
