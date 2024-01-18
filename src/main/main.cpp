@@ -22,7 +22,7 @@ static inline int getOutputAudioDeviceList(std::vector<std::wstring> &vec)
   {
     const char* audioDeviceName = SDL_GetAudioDeviceName(i, 0);
     std::string mcAudioDeviceName = std::string(audioDeviceName);
-    std::wstring wcAudioDeviceName = UTF8ToUnicode(mcAudioDeviceName);
+    std::wstring wcAudioDeviceName = stringHelper::stringToWstring(mcAudioDeviceName);
     vec.push_back(wcAudioDeviceName);
   }
   return deviceNum;
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
   }
 
   std::string progName = std::string(argv[0]);
-  std::wstring wsProgName = UTF8ToUnicode(progName);
+  std::wstring wsProgName = stringHelper::stringToWstring(progName);
   if (argc < 3)
   {
     usage(wsProgName);
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
   av_log_set_callback(myLogCallback);
 #endif
 
-  Options opt;
+  player::Options opt;
 
   // Output audio device.
   std::vector<std::wstring> vecAudioOutDevNames;
@@ -210,20 +210,16 @@ int main(int argc, char *argv[])
   // Create filename
   std::string filename = std::string(argv[1]);
 
-  // Create VideoState
-  std::shared_ptr<VideoState> videoState = std::make_shared<VideoState>();
-  videoState->filename = filename;
-  videoState->av_sync_type = (SYNC_TYPE)opt.syncType;
-
   // Create VideoReader
-  std::unique_ptr<VideoReader> videoReader = std::make_unique<VideoReader>();
-  videoReader->start(videoState.get(), opt);
+  std::unique_ptr<player::VideoReader> videoReader = std::make_unique<player::VideoReader>();
+  videoReader->start(filename, opt);
   while(1)
   {
     std::chrono::milliseconds duration(1000);
     std::this_thread::sleep_for(duration);
-    if (videoReader->quitStatus())
+    if (videoReader->isFinished())
     {
+      videoReader->stop();
       break;
     }
   }

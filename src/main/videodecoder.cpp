@@ -3,40 +3,43 @@
 #include <thread>
 #include "videodecoder.h"
 
-VideoDecoder::VideoDecoder()
-  : m_videoState(nullptr)
-{
-}
+using namespace player;
+
+const int MAX_QUEUE_SIZE = 50;
 
 VideoDecoder::~VideoDecoder()
 {
-  m_videoState = nullptr;
+  this->stop();
 }
 
-int VideoDecoder::start(VideoState *videoState)
+int VideoDecoder::start(std::shared_ptr<VideoState> vs)
 {
-  m_videoState = videoState;
-  if (m_videoState)
+  m_vs = vs;
+  if (m_vs)
   {
     std::thread([&](VideoDecoder *decoder)
-      {
-        decoder->videoThread(m_videoState);
-      }, this).detach();
+    {
+      decoder->decodeThread(m_vs);
+    }, this).detach();
+    return 0;
   }
-  else
-  {
-    return -1;
-  }
-  return 0;
+
+  return -1;
 }
 
-int VideoDecoder::videoThread(void *arg)
+void VideoDecoder::stop()
+{
+  std::unique_lock<std::mutex> lock(m_mutex);
+  m_finishedDecoder = true;
+}
+
+int VideoDecoder::decodeThread(std::shared_ptr<VideoState> vs)
 {
   // retrieve global videostate
-  VideoState *videoState = (VideoState *)arg;
+  auto videoState = vs;
 
   // allocate an AVPacket to be used to retrieve data from the videoq.
-  AVPacket *packet = av_packet_alloc();
+  AVPacket* packet = av_packet_alloc();
   if (packet == nullptr)
   {
     std::cerr << "Could not alloc packet" << std::endl;
@@ -47,37 +50,55 @@ int VideoDecoder::videoThread(void *arg)
   int frameFinished = 0;
 
   // allocate a new AVFrame, used to decode video packets
-  static AVFrame *pFrame = nullptr;
-  pFrame = av_frame_alloc();
+  AVFrame* pFrame = av_frame_alloc();
   if (!pFrame)
   {
     std::cerr << "Could not allocate AVFrame" << std::endl;
+    av_packet_unref(packet);
+    av_packet_free(&packet);
     return -1;
   }
 
   double pts = 0.0;
-
+  auto& videoCodecCtx = videoState->videoCodecCtx();
   for (;;)
   {
-    // get a packet from videq
-    int ret = videoState->videoq.get(packet, 1);
-    if (ret < 0)
+    // Check decoder finish flg
     {
-      // means we quit getting packets
-      break;
+      std::unique_lock<std::mutex> lock(m_mutex);
+      if (m_finishedDecoder)
+      {
+        break;
+      }
     }
 
-    if (packet->data == videoState->flush_pkt->data)
+    // get a packet from videq
+    int ret = videoState->popVideoPacketRead(packet);
+    if (ret < 0)
     {
-      avcodec_flush_buffers(videoState->video_ctx);
+      if (videoState->isPlayerFinished())
+      {
+        // means we quit getting packets
+        break;
+      }
       continue;
+    }
+
+    auto flushPacket = videoState->flushPacket();
+    if (flushPacket)
+    {
+      if (packet->data == flushPacket->data)
+      {
+        avcodec_flush_buffers(videoCodecCtx);
+        continue;
+      }
     }
 
     // init set pts to 0 for all frames
     pts = 0.0;
 
     // give the decoder raw compressed data in an AVPacket
-    ret = avcodec_send_packet(videoState->video_ctx, packet);
+    ret = avcodec_send_packet(videoCodecCtx, packet);
     if (ret < 0)
     {
       std::cerr << "Error sending packet for decoding" << std::endl;
@@ -87,7 +108,7 @@ int VideoDecoder::videoThread(void *arg)
     while (ret >= 0)
     {
       // get decoded output data from decoder
-      ret = avcodec_receive_frame(videoState->video_ctx, pFrame);
+      ret = avcodec_receive_frame(videoCodecCtx, pFrame);
       if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
       {
         break;
@@ -102,7 +123,7 @@ int VideoDecoder::videoThread(void *arg)
         frameFinished = 1;
       }
 
-      pts = this->guessCorrectPts(videoState->video_ctx, pFrame->pts, pFrame->pkt_dts);
+      pts = (double)this->guessCorrectPts(videoCodecCtx, pFrame->pts, pFrame->pkt_dts);
       // in case we get an undefined timestamp value
       if (pts == AV_NOPTS_VALUE)
       {
@@ -110,13 +131,14 @@ int VideoDecoder::videoThread(void *arg)
         pts = 0.0;
       }
 
-      pts *= av_q2d(videoState->video_st->time_base);
+      auto& videoStream = videoState->videoStream();
+      pts *= av_q2d(videoStream->time_base);
 
       // did we get an entire video frame?
       if (frameFinished)
       {
         pts = this->syncVideo(videoState, pFrame, pts);
-        if (m_videoState->queuePicture(pFrame, pts) < 0)
+        if (videoState->queuePicture(pFrame, pts) < 0)
         {
           break;
         }
@@ -134,7 +156,7 @@ int VideoDecoder::videoThread(void *arg)
 }
 
 
-int64_t VideoDecoder::guessCorrectPts(AVCodecContext *ctx, int64_t reordered_pts, int64_t dts)
+int64_t VideoDecoder::guessCorrectPts(AVCodecContext *ctx, const int64_t& reordered_pts, const int64_t& dts)
 {
   int64_t pts = AV_NOPTS_VALUE;
 
@@ -170,28 +192,30 @@ int64_t VideoDecoder::guessCorrectPts(AVCodecContext *ctx, int64_t reordered_pts
   return pts;
 }
 
-double VideoDecoder::syncVideo(VideoState *videoState, AVFrame *src_frame, double pts)
+double VideoDecoder::syncVideo(std::shared_ptr<VideoState> videoState, AVFrame* srcFrame, double pts)
 {
   double frame_delay = 0.0;
 
   if (pts!= 0)
   {
     // if we have pts, set video clock to it
-    videoState->video_clock = pts;
+    videoState->setVideoClock(pts);
   }
   else
   {
     // if we aren't given a pts, set it to the clock
-    pts = videoState->video_clock;
+    pts = videoState->videoClock();
   }
 
   // update the video clock
-  frame_delay = av_q2d(videoState->video_ctx->time_base);
+  auto& videoCodecCtx = videoState->videoCodecCtx();
+  frame_delay = av_q2d(videoCodecCtx->time_base);
 
   // if we are repeating a frame, adjust clock accordingly
-  frame_delay += src_frame->repeat_pict * (frame_delay * 0.5);
+  frame_delay += srcFrame->repeat_pict * (frame_delay * 0.5);
 
-  videoState->video_clock += frame_delay;
+  auto videoClock = videoState->videoClock();
+  videoState->setVideoClock(videoClock + frame_delay);
 
   return pts;
 }

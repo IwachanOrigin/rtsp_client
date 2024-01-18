@@ -7,17 +7,22 @@ extern "C"
 #include <libavformat/avformat.h>
 }
 
+namespace player
+{
+
 class VideoPicture
 {
 public:
-  explicit VideoPicture();
-  ~VideoPicture();
+  explicit VideoPicture() = default;
+  ~VideoPicture() = default;
 
-  AVFrame *frame;
-  int width;
-  int height;
-  int allocated;
-  double pts;
+  AVFrame *frame = nullptr;
+  int width = 0;
+  int height = 0;
+  int allocated = 0;
+  double pts = 0.0;
 };
+
+} // player
 
 #endif // VIDEO_PICTURE_H_

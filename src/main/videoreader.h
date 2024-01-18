@@ -4,12 +4,7 @@
 
 #include <string>
 #include <memory>
-#include "videostate.h"
-#include "videodecoder.h"
-#include "audiodecoder.h"
-#include "audioresamplingstate.h"
-#include "videorenderer.h"
-#include "options.h"
+#include <atomic>
 
 extern "C"
 {
@@ -22,29 +17,39 @@ extern "C"
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
 #include <SDL.h>
-#include <SDL_thread.h>
 }
+
+#include "videorenderer.h"
+#include "videodecoder.h"
+#include "options.h"
+
+namespace player
+{
+
+class VideoState;
 
 class VideoReader
 {
 public:
-  explicit VideoReader();
-  ~VideoReader();
+  explicit VideoReader() = default;
+  ~VideoReader() = default;
 
-  int start(VideoState* videoState, const Options& opt);
-  int quitStatus() { return m_videoState->quit; }
+  int start(const std::string& filename, const Options& opt);
+  void stop();
+  bool isFinished() const { return m_isFinished; }
 
 private:
-  VideoDecoder* m_videoDecoder;
-  VideoRenderer* m_videoRenderer;
-  VideoState* m_videoState;
-  int m_deviceID;
-  AVPacket* m_packet;
+  std::shared_ptr<VideoState> m_videoState = nullptr;
+  std::unique_ptr<VideoDecoder> m_videoDecoder = nullptr;
+  std::unique_ptr<VideoRenderer> m_videoRenderer = nullptr;
+  std::string m_filename = "";
+  std::atomic_bool m_isFinished = false;
 
-  int streamComponentOpen(VideoState *videoState, int stream_index);
-  int readThread(void *arg, const Options& opt);
-  void releasePointer();
-  static int decodeInterruptCB(void *videoState);
+  int streamComponentOpen(std::shared_ptr<VideoState> vs, const int& streamIndex);
+  int readThread(std::shared_ptr<VideoState> vs, const Options& opt);
+  static int decodeInterruptCB(void* videoState);
 };
+
+}
 
 #endif // VIDEO_READER_H_

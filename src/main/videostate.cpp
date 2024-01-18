@@ -1,88 +1,95 @@
 
 #include <iostream>
 #include "videostate.h"
+#include "audiodecoder.h"
+
+using namespace player;
 
 VideoState::VideoState()
-  : pFormatCtx(nullptr)
-  , audioStream(-1)
-  , audio_st(nullptr)
-  , audio_ctx(nullptr)
-  , audio_buf_size(0)
-  , audio_buf_index(0)
-  , audio_pkt_data(nullptr)
-  , audio_pkt_size(0)
-  , audio_clock(0)
-  , audio_diff_cum(0)
-  , audio_diff_avg_coef(0)
-  , audio_diff_threshold(0)
-  , audio_diff_avg_count(0)
-  , videoStream(-1)
-  , video_st(nullptr)
-  , video_ctx(nullptr)
-  , video_clock(0)
-  , video_current_pts(0)
-  , video_current_pts_time(0)
-  , texture(nullptr)
-  , renderer(nullptr)
-  , sws_ctx(nullptr)
-  , frame_timer(0)
-  , frame_last_pts(0)
-  , frame_last_delay(0)
-  , quit(0)
-  , pictq_size(0)
-  , pictq_rindex(0)
-  , pictq_windex(0)
-  , pictq_cond(SDL_CreateCond())
-  , pictq_mutex(SDL_CreateMutex())
-  , screen_mutex(SDL_CreateMutex())
-  , output_audio_device_index(0)
-  , av_sync_type(DEFAULT_AV_SYNC_TYPE)
 {
-  flush_pkt = av_packet_alloc();
-  flush_pkt->data = (uint8_t*)"FLUSH";
+  // init sdl_surface mutex ref
+  m_screenMutex = SDL_CreateMutex();
+  m_pictqMutex = SDL_CreateMutex();
+  m_pictqCond = SDL_CreateCond();
 }
 
 VideoState::~VideoState()
 {
-  if (pFormatCtx)
+  if (m_flushPkt)
   {
-    // Close the opened input avformatcontext
-    avformat_close_input(&pFormatCtx);
-    avformat_free_context(pFormatCtx);
-    pFormatCtx = nullptr;
-  }
-  // Clear queue
-  videoq.clear();
-  audioq.clear();
-
-  if (audio_ctx)
-  {
-    avcodec_free_context(&audio_ctx);
-    audio_ctx = nullptr;
+    // wipe the packet
+    av_packet_unref(m_flushPkt);
+    av_packet_free(&m_flushPkt);
+    m_flushPkt = nullptr;
   }
 
-  if (video_ctx)
+  if (m_formatCtx)
   {
-    avcodec_free_context(&video_ctx);
-    video_ctx = nullptr;
+    // close the opened input avformatcontext
+    avformat_close_input(&m_formatCtx);
+    m_formatCtx = nullptr;
   }
 
-  if (texture)
+  if (m_videoPacketQueue.size() > 0)
   {
-    SDL_DestroyTexture(texture);
-    texture = nullptr;
+    m_videoPacketQueue.clear();
   }
-  if (renderer)
+
+  if (m_audioPacketQueue.size() > 0)
   {
-    SDL_DestroyRenderer(renderer);
-    renderer = nullptr;
+    m_audioPacketQueue.clear();
   }
+
+  if (m_audioCtx)
+  {
+    avcodec_free_context(&m_audioCtx);
+    m_audioCtx = nullptr;
+  }
+
+  if (m_videoCtx)
+  {
+    avcodec_free_context(&m_videoCtx);
+    m_videoCtx = nullptr;
+  }
+
+  if (m_screenMutex)
+  {
+    SDL_DestroyMutex(m_screenMutex);
+    m_screenMutex = nullptr;
+  }
+
+  if (m_pictqMutex)
+  {
+    SDL_DestroyMutex(m_pictqMutex);
+    m_pictqMutex = nullptr;
+  }
+
+  if (m_pictqCond)
+  {
+    SDL_DestroyCond(m_pictqCond);
+    m_pictqCond = nullptr;
+  }
+
+  // device stop, memory release
+  if (m_sdlAudioDeviceID > 0)
+  {
+    SDL_LockAudioDevice(m_sdlAudioDeviceID);
+    SDL_PauseAudioDevice(m_sdlAudioDeviceID, 1);
+    SDL_UnlockAudioDevice(m_sdlAudioDeviceID);
+
+    SDL_CloseAudioDevice(m_sdlAudioDeviceID);
+  }
+  m_sdlAudioDeviceID = -1;
+
+  SDL_Quit();
 }
 
 void VideoState::allocPicture()
 {
-  VideoPicture *videoPicture = nullptr;
-  videoPicture = &pictq[pictq_windex];
+  m_flushPkt = av_packet_alloc();
+  m_flushPkt->data = (uint8_t*)"FLUSH";
+
+  auto videoPicture = &m_pictureQueue[m_pictqWindex];
 
   // check if the sdl_overlay is allocated
   if (videoPicture->frame)
@@ -93,26 +100,24 @@ void VideoState::allocPicture()
   }
 
   // lock global screen mutex
-  SDL_LockMutex(screen_mutex);
+  SDL_LockMutex(m_screenMutex);
 
   // get the size in bytes required to store an image with the given parameters
   int numBytes = 0;
   numBytes = av_image_get_buffer_size(
     AV_PIX_FMT_YUV420P
-    , video_ctx->width
-    , video_ctx->height
+    , m_videoCtx->width
+    , m_videoCtx->height
     , 32
     );
 
   // allocate image data buffer
-  uint8_t *buffer = nullptr;
-  buffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
+  auto buffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
 
   // alloc the avframe later used to contain the scaled frame
   videoPicture->frame = av_frame_alloc();
   if (videoPicture->frame == nullptr)
   {
-
     return;
   }
 
@@ -122,59 +127,46 @@ void VideoState::allocPicture()
     , videoPicture->frame->linesize
     , buffer
     , AV_PIX_FMT_YUV420P
-    , video_ctx->width
-    , video_ctx->height
+    , m_videoCtx->width
+    , m_videoCtx->height
     , 32
     );
 
   // unlock mutex
-  SDL_UnlockMutex(screen_mutex);
+  SDL_UnlockMutex(m_screenMutex);
 
   // update videoPicture struct fields
-  videoPicture->width = video_ctx->width;
-  videoPicture->height = video_ctx->height;
+  videoPicture->width = m_videoCtx->width;
+  videoPicture->height = m_videoCtx->height;
   videoPicture->allocated = 1;
 }
 
-int VideoState::queuePicture(AVFrame *pFrame, double pts)
+int VideoState::queuePicture(AVFrame* pFrame, const double& pts)
 {
   // lock videostate pictq mutex
-  SDL_LockMutex(pictq_mutex);
+  SDL_LockMutex(m_pictqMutex);
 
   // wait until we have space for a new picture in pictq
-  while (pictq_size >= VIDEO_PICTURE_QUEUE_SIZE && !quit)
+  while (m_pictqSize >= VIDEO_PICTURE_QUEUE_SIZE)
   {
-    SDL_CondWait(pictq_cond, pictq_mutex);
+    SDL_CondWait(m_pictqCond, m_pictqMutex);
   }
 
   // unlock pictq mutex
-  SDL_UnlockMutex(pictq_mutex);
+  SDL_UnlockMutex(m_pictqMutex);
 
-  // check global quit flag
-  if (quit)
-  {
-    return -1;
-  }
-
-  VideoPicture *videoPicture;
-  videoPicture = &pictq[pictq_windex];
+  auto videoPicture = &m_pictureQueue[m_pictqWindex];
 
   // if the videopicture sdl_overlay is not allocated or has a different width, height
   if (!videoPicture->frame ||
-      videoPicture->width != video_ctx->width ||
-      videoPicture->height != video_ctx->height)
+      videoPicture->width != m_videoCtx->width ||
+      videoPicture->height != m_videoCtx->height)
   {
     // set sdl_overlay not allocated
     videoPicture->allocated = 0;
 
     // allocate a new sdl_overlay for the videoPicture struct
     this->allocPicture();
-
-    // check global quit flag
-    if (quit)
-    {
-      return -1;
-    }
   }
 
   // check the new sdl_overlay was correctly allocated
@@ -194,74 +186,102 @@ int VideoState::queuePicture(AVFrame *pFrame, double pts)
 
     // scale the image in pFrame->data and put the resulting scaled image in pict->data
     sws_scale(
-      sws_ctx
+      m_decodeVideoSwsCtx
       , (uint8_t const* const*)pFrame->data
       , pFrame->linesize
       , 0
-      , video_ctx->height
+      , m_videoCtx->height
       , videoPicture->frame->data
       , videoPicture->frame->linesize
       );
 
     // update videopicture queue write index
-    pictq_windex++;
+    m_pictqWindex++;
 
     // if the write index has reached the videopicture queue size
-    if (pictq_windex == VIDEO_PICTURE_QUEUE_SIZE)
+    if (m_pictqWindex == VIDEO_PICTURE_QUEUE_SIZE)
     {
-      pictq_windex = 0;
+      m_pictqWindex = 0;
     }
 
     // lock videopicture queue
-    SDL_LockMutex(pictq_mutex);
+    SDL_LockMutex(m_pictqMutex);
 
     // increase videopictq queue size
-    pictq_size++;
+    m_pictqSize++;
 
     // unlock videopicture queue
-    SDL_UnlockMutex(pictq_mutex);
+    SDL_UnlockMutex(m_pictqMutex);
   }
 
   return 0;
 }
 
-double VideoState::getMasterClock()
+int VideoState::pushAudioPacketRead(AVPacket* packet)
 {
-  if (av_sync_type == SYNC_TYPE::AV_SYNC_VIDEO_MASTER)
-  {
-    return this->getVideoClock();
-  }
-  else if (av_sync_type == SYNC_TYPE::AV_SYNC_AUDIO_MASTER)
-  {
-    return this->getAudioClock();
-  }
-  else if (av_sync_type == SYNC_TYPE::AV_SYNC_EXTERNAL_MASTER)
-  {
-    return this->getExternalClock();
-  }
-  else
-  {
-    std::cerr << "Error : Undefined a/v sync type" << std::endl;
-    return -1;
-  }
+  return m_audioPacketQueue.push(packet);
 }
 
-double VideoState::getVideoClock()
+int VideoState::pushVideoPacketRead(AVPacket* packet)
 {
-  double delta = (av_gettime() - video_current_pts_time) / 1000000.0;
-  return video_current_pts + delta;
+  return m_videoPacketQueue.push(packet);
 }
 
-double VideoState::getAudioClock()
+int VideoState::popAudioPacketRead(AVPacket* packet)
 {
-  double pts = audio_clock;
-  int hw_buf_size = audio_buf_size - audio_buf_index;
+  int ret = m_audioPacketQueue.pop(packet);
+  return (packet == nullptr) ? -1 : ret;
+}
+
+int VideoState::popVideoPacketRead(AVPacket* packet)
+{
+  int ret = m_videoPacketQueue.pop(packet);
+  return (packet == nullptr) ? -1 : ret;
+}
+
+double VideoState::masterClock()
+{
+  switch (m_avSyncType)
+  {
+    case SYNC_TYPE::AV_SYNC_VIDEO_MASTER:
+    {
+      return this->calcVideoClock();
+    }
+    break;
+
+    case SYNC_TYPE::AV_SYNC_AUDIO_MASTER:
+    {
+      return this->calcAudioClock();
+    }
+    break;
+
+    case SYNC_TYPE::AV_SYNC_EXTERNAL_MASTER:
+    {
+      return this->calcExternalClock();
+    }
+    break;
+  }
+
+  std::cerr << "Error : Undefined a/v sync type" << std::endl;
+  return -1;
+}
+
+double VideoState::calcVideoClock()
+{
+  double delta = (av_gettime() - m_videoDecodeCurrentPtsTime) / 1000000.0;
+  return m_videoDecodeCurrentPts + delta;
+}
+
+double VideoState::calcAudioClock()
+{
+  double pts = m_audioClock;
+  int hw_buf_size = m_audioBufSize - m_audioBufIndex;
   int bytes_per_sec = 0;
-  int n = 2 * audio_ctx->ch_layout.nb_channels;
+  int n = 2 * m_audioCtx->ch_layout.nb_channels;
 
-  if (audio_st)
+  if (m_audioStream)
   {
-    bytes_per_sec = audio_ctx->sample_rate * n;
+    bytes_per_sec = m_audioCtx->sample_rate * n;
   }
 
   if (bytes_per_sec)
@@ -272,21 +292,21 @@ double VideoState::getAudioClock()
   return pts;
 }
 
-double VideoState::getExternalClock()
+double VideoState::calcExternalClock()
 {
-  external_clock_time = av_gettime();
-  external_clock = external_clock_time / 1000000.0;
+  m_externalClockTime = av_gettime();
+  m_externalClock = m_externalClockTime / 1000000.0;
 
-  return external_clock;
+  return m_externalClock;
 }
 
 
-void VideoState::streamSeek(int64_t pos, int rel)
+void VideoState::streamSeek(const int64_t& pos, const int& rel)
 {
-  if (!seek_req)
+  if (!m_seekReq)
   {
-    seek_pos = pos;
-    seek_flags = rel < 0 ? AVSEEK_FLAG_BACKWARD : 0;
-    seek_req = 1;
+    m_seekPos = pos;
+    m_seekFlags = rel < 0 ? AVSEEK_FLAG_BACKWARD : 0;
+    m_seekReq = 1;
   }
 }

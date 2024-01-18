@@ -3,6 +3,7 @@
 #define VIDEO_STATE_H_
 
 #include <string>
+#include <atomic>
 #include <memory>
 #include "packetqueue.h"
 #include "videopicture.h"
@@ -25,7 +26,8 @@ extern "C"
 
 #define VIDEO_PICTURE_QUEUE_SIZE 1
 
-#define DEFAULT_AV_SYNC_TYPE SYNC_TYPE::AV_SYNC_AUDIO_MASTER
+namespace player
+{
 
 enum class SYNC_TYPE
 {
@@ -43,85 +45,157 @@ public:
   explicit VideoState();
   ~VideoState();
 
-  int queuePicture(AVFrame *pFrame, double pts);
+  // Common
+  AVFormatContext*& formatCtx() { return m_formatCtx; }
+  int& videoStreamIndex() { return m_videoStreamIndex; }
+  int& audioStreamIndex() { return m_audioStreamIndex; }
+  AVPacket*& flushPacket() { return m_flushPkt; }
+  AVCodecContext*& videoCodecCtx() { return m_videoCtx; }
+  AVStream*& videoStream() { return m_videoStream; }
+  AVCodecContext*& audioCodecCtx() { return m_audioCtx; }
+  AVStream*& audioStream() { return m_audioStream; }
+  int outputAudioDeviceIndex() const { return m_outputAudioDeviceIndex; }
+  void setOutputAudioDeviceIndex(const int& outputAudioDeviceIndex) { m_outputAudioDeviceIndex = outputAudioDeviceIndex; }
+  SDL_AudioDeviceID sdlAudioDeviceID() const { return m_sdlAudioDeviceID; }
+  void setSdlAudioDeviceID(const SDL_AudioDeviceID& audioDeviceID) { m_sdlAudioDeviceID = audioDeviceID; };
+  bool isPlayerFinished() const { return m_isPlayerFinished; }
+  void setPlayerFinished() { m_isPlayerFinished = true; }
+  int& videoPictureQueueSize() { return m_pictqSize; }
+  int& videoPictureQueueRIndex() { return m_pictqRindex; }
+  int& videoPictureQueueWIndex() { return m_pictqWindex; }
+  VideoPicture& videoPicture() { return m_pictureQueue[m_pictqRindex]; }
+  SDL_mutex*& pictureQueueMutex() { return m_pictqMutex; }
+  SDL_cond*& pictureQueueCond() { return m_pictqCond; }
+  SYNC_TYPE syncType() const { return m_avSyncType; }
+  void setSyncType(const SYNC_TYPE& syncType) { m_avSyncType = syncType; }
+  int queuePicture(AVFrame* pFrame, const double& pts);
 
-  double getMasterClock();
-  double getVideoClock();
-  double getAudioClock();
-  double getExternalClock();
-  void streamSeek(int64_t pos, int rel);
+  // For Read(Audio/Video)
+  int pushAudioPacketRead(AVPacket* packet);
+  int pushVideoPacketRead(AVPacket* packet);
+  int popAudioPacketRead(AVPacket* packet);
+  int popVideoPacketRead(AVPacket* packet);
+  int sizeAudioPacketRead() const { return m_audioPacketQueue.size(); }
+  int sizeVideoPacketRead() const { return m_videoPacketQueue.size(); }
+  int nbPacketsAudioRead() const { return m_audioPacketQueue.nbPackets(); }
+  int nbPacketsVideoRead() const { return m_videoPacketQueue.nbPackets(); }
+  void clearAudioPacketRead() { m_audioPacketQueue.clear(); }
+  void clearVideoPacketRead() { m_videoPacketQueue.clear(); }
 
-  AVFormatContext *pFormatCtx;
 
-  // audio
-  int audioStream;
-  AVStream* audio_st;
-  AVCodecContext* audio_ctx;
-  PacketQueue audioq;
-  uint8_t audio_buf[(MAX_AUDIO_FRAME_SIZE * 3) /2];
-  unsigned int audio_buf_size;
-  unsigned int audio_buf_index;
-  AVFrame audio_frame;
-  AVPacket audio_pkt;
-  uint8_t* audio_pkt_data;
-  int audio_pkt_size;
-  double audio_clock;
+  // For Video Decode
+  struct SwsContext*& decodeVideoSwsCtx() { return m_decodeVideoSwsCtx; }
+  SDL_mutex*& screenMutex() { return m_screenMutex; }
+  double frameDecodeTimer() const { return m_frameDecodeTimer; }
+  void setFrameDecodeTimer(const double& frameTimer) { m_frameDecodeTimer = frameTimer; }
+  double frameDecodeLastPts() const { return m_frameDecodeLastPts; }
+  void setFrameDecodeLastPts(const double& frameLastPts) { m_frameDecodeLastPts = frameLastPts; }
+  double frameDecodeLastDelay() const { return m_frameDecodeLastDelay; }
+  void setFrameDecodeLastDelay(const double& frameLastDelay) { m_frameDecodeLastDelay = frameLastDelay; }
+  double videoClock() const { return m_videoClock; }
+  void setVideoClock(const double& videoClock) { m_videoClock = videoClock; }
+  double videoDecodeCurrentPts() const { return m_videoDecodeCurrentPts; }
+  void setVideoDecodeCurrentPts(const double& videoCurrentPts) { m_videoDecodeCurrentPts = videoCurrentPts; }
+  int64_t videoDecodeCurrentPtsTime() const { return m_videoDecodeCurrentPtsTime; }
+  void setVideoDecodeCurrentPtsTime(const int64_t& videoCurrentPtsTime) { m_videoDecodeCurrentPtsTime = videoCurrentPtsTime; }
 
-  // video
-  int videoStream;
-  AVStream* video_st;
-  AVCodecContext* video_ctx;
-  SDL_Texture* texture;
-  SDL_Renderer* renderer;
-  PacketQueue videoq;
-  struct SwsContext *sws_ctx;
-  double frame_timer;
-  double frame_last_pts;
-  double frame_last_delay;
-  double video_clock;
-  double video_current_pts;
-  int64_t video_current_pts_time;
-  double audio_diff_cum;
-  double audio_diff_avg_coef;
-  double audio_diff_threshold;
-  int audio_diff_avg_count;
+  // For Audio Decode  
+  double audioClock() const { return m_audioClock; }
+  void setAudioClock(const double& audioClock) { m_audioClock = audioClock; }
+  unsigned int audioBufSize() const { return m_audioBufSize; }
+  void setAudioBufSize(const unsigned int& audioBufSize) { m_audioBufSize = audioBufSize; }
+  unsigned int audioBufIndex() const { return m_audioBufIndex; }
+  void setAudioBufIndex(const unsigned int& audioBufIndex) { m_audioBufIndex = audioBufIndex; }
+  double audioDiffCum() const { return m_audioDiffCum; }
+  void setAudioDiffCum(const double& diffCum) { m_audioDiffCum = diffCum; }
+  double audioDiffAvgCoef() const { return m_audioDiffAvgCoef; }
+  void setAudioDiffAvgCoef(const double& diffAvgCoef) { m_audioDiffAvgCoef = diffAvgCoef; }
+  double audioDiffThreshold() const { return m_audioDiffThreshold; }
+  void setAudioDiffThreshold(const double& diffThreshold) { m_audioDiffThreshold = diffThreshold; }
+  double audioDiffAvgCount() const { return m_audioDiffAvgCount; }
+  void setAudioDiffAvgCount(const double& diffAvgCount) { m_audioDiffAvgCount = diffAvgCount; }
+  uint8_t* audioArrayBuf() { return m_audioBuf; }
+  int audioArrayBufSize() const { return (MAX_AUDIO_FRAME_SIZE * 3) / 2; }
 
-  // av sync
-  SYNC_TYPE av_sync_type;
-  double external_clock;
-  int64_t external_clock_time;
+  // For calculate clock.
+  double masterClock();
+  double calcAudioClock(); // For AudioDecoder
 
-  // seeking
-  int seek_req;
-  int seek_flags;
-  int64_t seek_pos;
-
-  // SDL_surface mutex
-  SDL_mutex* screen_mutex;
-
-  // video picture queue
-  VideoPicture pictq[VIDEO_PICTURE_QUEUE_SIZE];
-  int pictq_size;
-  int pictq_rindex;
-  int pictq_windex;
-  SDL_mutex* pictq_mutex;
-  SDL_cond* pictq_cond;
-
-  // file name
-  std::string filename;
-
-  // output audio device index
-  int output_audio_device_index;
-
-  // quit flag
-  int quit;
-
-  //
-  AVPacket* flush_pkt;
+  // For Seek
+  int seekRequest() const { return m_seekReq; }
+  void setSeekRequest(const int& req) { m_seekReq = req; }
+  int64_t seekPos() const { return m_seekPos; }
+  int seekFlags() const { return m_seekFlags; }
+  void streamSeek(const int64_t& pos, const int& rel);
 
 private:
   void allocPicture();
+  double calcVideoClock();
+  double calcExternalClock();
+
+  AVFormatContext* m_formatCtx = nullptr;
+
+  // audio
+  int m_audioStreamIndex = -1;
+  AVStream* m_audioStream = nullptr;
+  AVCodecContext* m_audioCtx = nullptr;
+  PacketQueue m_audioPacketQueue;
+  uint8_t m_audioBuf[(MAX_AUDIO_FRAME_SIZE * 3) / 2]{};
+  unsigned int m_audioBufSize = 0;
+  unsigned int m_audioBufIndex = 0;
+  int m_audioPktSize = 0;
+  double m_audioClock = 0.0;
+  double m_audioDiffCum = 0.0;
+  double m_audioDiffAvgCoef = 0.0;
+  double m_audioDiffThreshold = 0.0;
+  int m_audioDiffAvgCount = 0;
+
+  // video
+  int m_videoStreamIndex = -1;
+  AVStream* m_videoStream = nullptr;
+  AVCodecContext* m_videoCtx = nullptr;
+  PacketQueue m_videoPacketQueue;
+  struct SwsContext* m_decodeVideoSwsCtx = nullptr;
+  double m_frameDecodeTimer = 0.0;
+  double m_frameDecodeLastPts = 0.0;
+  double m_frameDecodeLastDelay = 0.0;
+  double m_videoClock = 0.0;
+  double m_videoDecodeCurrentPts = 0.0;
+  int64_t m_videoDecodeCurrentPtsTime = 0;
+  // SDL_surface mutex
+  SDL_mutex* m_screenMutex = nullptr;
+
+  // av sync
+  SYNC_TYPE m_avSyncType = SYNC_TYPE::AV_SYNC_AUDIO_MASTER;
+  double m_externalClock = 0.0;
+  int64_t m_externalClockTime = 0;
+
+  // seeking
+  int m_seekReq = 0;
+  int m_seekFlags = 0;
+  int64_t m_seekPos = 0;
+
+  // video picture queue
+  VideoPicture m_pictureQueue[VIDEO_PICTURE_QUEUE_SIZE]{};
+  int m_pictqSize = 0;
+  int m_pictqRindex = 0;
+  int m_pictqWindex = 0;
+  SDL_mutex* m_pictqMutex = nullptr;
+  SDL_cond* m_pictqCond = nullptr;
+
+
+  // output audio device index in windows
+  int m_outputAudioDeviceIndex = -1;
+  SDL_AudioDeviceID m_sdlAudioDeviceID = 0;
+
+  //
+  AVPacket* m_flushPkt = nullptr;
+
+  std::atomic_bool m_isPlayerFinished = false;
+
 };
+
+} // player
 
 #endif // VIDEO_STATE_H_
 

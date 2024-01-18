@@ -4,23 +4,33 @@
 
 #include "videostate.h"
 
+namespace player
+{
+
 class VideoRenderer
 {
 public:
-  explicit VideoRenderer();
+  explicit VideoRenderer() = default;
   ~VideoRenderer();
 
-  int start(VideoState *videoState);
+  int start(std::shared_ptr<VideoState> vs);
+  void stop();
 
 private:
-  VideoState* m_videoState;
-  SDL_Window* m_screen;
-
+  std::shared_ptr<VideoState> m_vs = nullptr;
+  SDL_Window* m_screen = nullptr;
+  SDL_Texture* m_texture = nullptr;
+  SDL_Renderer* m_renderer = nullptr;
+  
   int displayThread();
   void scheduleRefresh(int delay);
   void videoRefreshTimer();
-  static Uint32 sdlRefreshTimerCB(Uint32 interval, void *param);
+  static Uint32 sdlRefreshTimerCb(Uint32 interval, void* param);
   void videoDisplay();
+  double getAudioClock();
 };
 
+} // player
+
 #endif // VIDEO_RENDERER_H_
+

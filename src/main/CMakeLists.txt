@@ -10,7 +10,6 @@ set(main_src
   videodecoder.h
   videodecoder.cpp
   videopicture.h
-  videopicture.cpp
   videoreader.h
   videoreader.cpp
   videostate.h
