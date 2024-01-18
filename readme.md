@@ -17,7 +17,7 @@ RTSP client using SDL2 and ffmpeg 6.0.
 
 ## Dependency
 
-    - SDL2 2.26.5+  
+    - SDL2 2.28.5+  
     - FFMPEG 6.0+  
 
 ## Setup
@@ -127,7 +127,7 @@ powershell.exe cmake -S . -B build -G "\"Ninja Multi-Config"\" -D FFMPEG_PATH="/
 
 ``` shell
 cd src  
-powershell.exe cmake -S . -B build -G "\"Ninja Multi-Config"\" -D FFMPEG_PATH="C:\software\ffmpeg-n6.0-latest-win64-lgpl-shared-6.0" -D SDL2_PATH="C:\software\sdl2\SDL2-devel-2.26.5-vc"  
+powershell.exe cmake -S . -B build -G "\"Ninja Multi-Config"\" -D FFMPEG_PATH="C:\software\ffmpeg-n6.0-latest-win64-lgpl-shared-6.0" -D SDL2_PATH="C:\software\SDL2-2.28.5"  
 powershell.exe cmake --build build  
 ```
 
