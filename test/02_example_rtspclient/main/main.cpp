@@ -19,9 +19,9 @@ void continueAfterPLAY(RTSPClient* rtspClient, int resultCode, char* resultStrin
 // Other event handler functions:
 void subsessionAfterPlaying(void* clientData); // called when a stream's subsession (e.g., audio or video substream) ends
 void subsessionByeHandler(void* clientData, char const* reason);
-  // called when a RTCP "BYE" is received for a subsession
+// called when a RTCP "BYE" is received for a subsession
 void streamTimerHandler(void* clientData);
-  // called at the end of a stream's expected duration (if the stream has not already signaled its end using a RTCP "BYE")
+// called at the end of a stream's expected duration (if the stream has not already signaled its end using a RTCP "BYE")
 
 // The main streaming routine (for each "rtsp://" URL):
 void openURL(UsageEnvironment& env, char const* progName, char const* rtspURL);
@@ -69,12 +69,11 @@ int main(int argc, char* argv[])
     openURL(*env, argv[0], argv[i]);
   }
 
-// All subsequent activity takes place within the event loop:
+  // All subsequent activity takes place within the event loop:
   env->taskScheduler().doEventLoop(&eventLoopWatchVariable);
   // This function call does not return, unless, at some point in time, "eventLoopWatchVariable" gets set to something non-zero.
   return 0;
 }
-
 
 
 void openURL(UsageEnvironment& env, char const* progName, char const* rtspURL)
@@ -104,7 +103,8 @@ void continueAfterDESCRIBE(RTSPClient* rtspClient, int resultCode, char* resultS
     UsageEnvironment& env = rtspClient->envir(); // alias
     StreamClientState& scs = ((MyRtspClient*)rtspClient)->scs; // alias
 
-    if (resultCode != 0) {
+    if (resultCode != 0)
+    {
       env << *rtspClient << "Failed to get a SDP description: " << resultString << "\n";
       delete[] resultString;
       break;
@@ -216,7 +216,7 @@ void continueAfterSETUP(RTSPClient* rtspClient, int resultCode, char* resultStri
     // after we've sent a RTSP "PLAY" command.)
 
     scs.m_subsession->sink = DummySink::createNew(env, *scs.m_subsession, rtspClient->url());
-      // perhaps use your own custom "MediaSink" subclass instead
+    // perhaps use your own custom "MediaSink" subclass instead
     if (scs.m_subsession->sink == NULL)
     {
       env << *rtspClient << "Failed to create a data sink for the \"" << *scs.m_subsession << "\" subsession: " << env.getResultMsg() << "\n";
