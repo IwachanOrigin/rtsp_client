@@ -43,6 +43,12 @@ if (WIN32)
     message(FATAL_ERROR "!!!!!!!! LIVE555_PATH IS NOT SET !!!!!!!!")
   endif(DEFINED LIVE555_PATH)
 
+  if(DEFINED OPENSSL_PATH)
+    list(APPEND CMAKE_PREFIX_PATH ${OPENSSL_PATH})
+  else()
+    message(FATAL_ERROR "!!!!!!!! OPENSSL_PATH IS NOT SET !!!!!!!!")
+  endif(DEFINED OPENSSL_PATH)
+
   set(FFMPEG_PATH_BIN ${FFMPEG_PATH}/bin)
   set(FFMPEG_PATH_INC ${FFMPEG_PATH}/include)
   set(FFMPEG_PATH_LIB ${FFMPEG_PATH}/lib)

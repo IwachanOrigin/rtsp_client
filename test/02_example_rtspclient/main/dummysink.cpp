@@ -1,7 +1,7 @@
 
 #include "dummysink.h"
 
-using namespace player;
+using namespace client;
 
 // Even though we're not going to be doing anything with the incoming data, we still need to receive it.
 // Define the size of the buffer that we'll use:
@@ -49,8 +49,11 @@ void DummySink::afterGettingFrame(
 {
   // We've just received a frame of data.  (Optionally) print out information about it:
 #ifdef DEBUG_PRINT_EACH_RECEIVED_FRAME
-  if (fStreamId != NULL) envir() << "Stream \"" << fStreamId << "\"; ";
-  envir() << fSubsession.mediumName() << "/" << fSubsession.codecName() << ":\tReceived " << frameSize << " bytes";
+  if (m_streamId != NULL)
+  {
+    envir() << "Stream \"" << m_streamId << "\"; ";
+  }
+  envir() << m_subsession.mediumName() << "/" << m_subsession.codecName() << ":\tReceived " << frameSize << " bytes";
   if (numTruncatedBytes > 0)
   {
     envir() << " (with " << numTruncatedBytes << " bytes truncated)";
@@ -58,7 +61,7 @@ void DummySink::afterGettingFrame(
   char uSecsStr[6+1]{}; // used to output the 'microseconds' part of the presentation time
   sprintf(uSecsStr, "%06u", (unsigned)presentationTime.tv_usec);
   envir() << ".\tPresentation time: " << (int)presentationTime.tv_sec << "." << uSecsStr;
-  if (fSubsession.rtpSource() != NULL && !fSubsession.rtpSource()->hasBeenSynchronizedUsingRTCP())
+  if (m_subsession.rtpSource() != NULL && !m_subsession.rtpSource()->hasBeenSynchronizedUsingRTCP())
   {
     envir() << "!"; // mark the debugging output to indicate that this presentation time is not RTCP-synchronized
   }
@@ -67,7 +70,7 @@ void DummySink::afterGettingFrame(
 #endif
   envir() << "\n";
 #endif
-  
+
   // Then continue, to request the next frame of data:
   continuePlaying();
 }
@@ -80,7 +83,7 @@ Boolean DummySink::continuePlaying()
   }
   // Request the next frame of data from our input source.  "afterGettingFrame()" will get called later, when it arrives:
   fSource->getNextFrame(
-    fReceiveBuffer
+    m_receiveBuffer
     , DUMMY_SINK_RECEIVE_BUFFER_SIZE
     , afterGettingFrame
     , this

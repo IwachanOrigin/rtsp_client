@@ -5,7 +5,7 @@
 #include <liveMedia.hh>
 #include <BasicUsageEnvironment.hh>
 
-namespace player
+namespace client
 {
 
 class DummySink : public MediaSink

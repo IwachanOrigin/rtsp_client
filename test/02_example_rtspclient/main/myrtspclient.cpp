@@ -1,7 +1,7 @@
 
 #include "myrtspclient.h"
 
-using namespace player;
+using namespace client;
 
 MyRtspClient* MyRtspClient::createNew(
     UsageEnvironment& env

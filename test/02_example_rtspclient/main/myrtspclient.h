@@ -6,7 +6,7 @@
 #include <BasicUsageEnvironment.hh>
 #include "streamclientstate.h"
 
-namespace player
+namespace client
 {
 
 class MyRtspClient : public RTSPClient
