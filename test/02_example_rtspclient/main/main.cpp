@@ -3,7 +3,7 @@
 #include <BasicUsageEnvironment.hh>
 #include "streamclientstate.h"
 #include "myrtspclient.h"
-#include "dummysink.h"
+#include "sdlvideosink.h"
 
 using namespace client;
 
@@ -49,6 +49,7 @@ void usage(UsageEnvironment& env, char const* progName) {
 
 char eventLoopWatchVariable = 0;
 
+#undef main
 
 int main(int argc, char* argv[])
 {
@@ -215,7 +216,7 @@ void continueAfterSETUP(RTSPClient* rtspClient, int resultCode, char* resultStri
     // (This will prepare the data sink to receive data; the actual flow of data from the client won't start happening until later,
     // after we've sent a RTSP "PLAY" command.)
 
-    scs.m_subsession->sink = DummySink::createNew(env, *scs.m_subsession, rtspClient->url());
+    scs.m_subsession->sink = SdlVideoSink::createNew(env, *scs.m_subsession, rtspClient->url());
     // perhaps use your own custom "MediaSink" subclass instead
     if (scs.m_subsession->sink == NULL)
     {

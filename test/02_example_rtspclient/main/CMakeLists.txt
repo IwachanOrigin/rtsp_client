@@ -1,7 +1,7 @@
 
 set(main_src
-  dummysink.cpp
-  dummysink.h
+  sdlvideosink.cpp
+  sdlvideosink.h
   main.cpp
   myrtspclient.cpp
   myrtspclient.h
