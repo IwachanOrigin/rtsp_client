@@ -8,7 +8,7 @@ using namespace client;
 
 // Even though we're not going to be doing anything with the incoming data, we still need to receive it.
 // Define the size of the buffer that we'll use:
-#define DUMMY_SINK_RECEIVE_BUFFER_SIZE 100000
+#define DUMMY_SINK_RECEIVE_BUFFER_SIZE 1000000
 
 SdlVideoSink* SdlVideoSink::createNew(UsageEnvironment& env, MediaSubsession& subsession, char const* streamId)
 {
@@ -142,25 +142,47 @@ bool SdlVideoSink::initDecRender()
     std::cerr << "Failed to avcodec_open2 func." << std::endl;
     return false;
   }
+#else
+  const AVCodec* codec = avcodec_find_decoder(AV_CODEC_ID_H264);
+  assert(codec);
+
+  m_videoCodecContext = avcodec_alloc_context3(nullptr);
+  assert(m_videoCodecContext);
+  auto sprops = m_subsession.fmtp_spropparametersets();
+  unsigned num = 1;
+  auto records = parseSPropParameterSets(sprops, num);
+  if (!records)
+  {
+    std::cerr << "Failed to parseSPropParameterSets." << std::endl;
+    return false;
+  }
+  m_videoCodecContext->extradata = (uint8_t*)std::malloc(static_cast<std::size_t>(records->sPropLength) + AV_INPUT_BUFFER_PADDING_SIZE);
+  if (!m_videoCodecContext->extradata)
+  {
+    std::cerr << "Failed to malloc to extradata." << std::endl;
+    return false;
+  }
+  std::memcpy(m_videoCodecContext->extradata, records->sPropBytes, static_cast<std::size_t>(records->sPropLength));
+  m_videoCodecContext->extradata_size = static_cast<std::size_t>(records->sPropLength);
+  delete[] records;
+  if (avcodec_open2(m_videoCodecContext, codec, nullptr) < 0)
+  {
+    std::cerr << "Failed to avcodec_open2 func." << std::endl;
+    return false;
+  }
+
+#endif
 
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER))
   {
     exit(-1);
   }
 
-  m_playerContext = {nullptr};
-  m_playerContext.window = SDL_CreateWindow("Player", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, 0);
+  m_playerContext = { nullptr };
+  m_playerContext.window = SDL_CreateWindow("Player", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 2560, 1440, 0);
   m_playerContext.renderer = SDL_CreateRenderer(m_playerContext.window, -1, 0);
-  m_playerContext.texture = SDL_CreateTexture(m_playerContext.renderer, SDL_PIXELFORMAT_YV12, SDL_TEXTUREACCESS_STREAMING, 640, 480);
+  m_playerContext.texture = SDL_CreateTexture(m_playerContext.renderer, SDL_PIXELFORMAT_YV12, SDL_TEXTUREACCESS_STREAMING, 2560, 1440);
   m_playerContext.mutex = SDL_CreateMutex();
-
-#else
-  m_videoCodecContext = avcodec_alloc_context3(nullptr);
-  assert(m_videoCodecContext);
-  auto sprops = m_subsession.fmtp_spropparametersets();
-  unsigned num = 1;
-  auto records = parseSPropParameterSets(sprops, num);
-#endif
 
   return true;
 }

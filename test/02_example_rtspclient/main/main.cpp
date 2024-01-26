@@ -1,6 +1,7 @@
 
 #include <liveMedia.hh>
 #include <BasicUsageEnvironment.hh>
+#include <string>
 #include "streamclientstate.h"
 #include "myrtspclient.h"
 #include "sdlvideosink.h"
@@ -200,6 +201,14 @@ void continueAfterSETUP(RTSPClient* rtspClient, int resultCode, char* resultStri
       env << *rtspClient << "Failed to set up the \"" << *scs.m_subsession << "\" subsession: " << resultString << "\n";
       break;
     }
+#if 0
+    const std::string h264 = "H264";
+    if (h264 != scs.m_subsession->codecName())
+    {
+      env << *rtspClient << "Leap the \"" << *scs.m_subsession << "\" subsession";
+      continue;
+    }
+#endif
 
     env << *rtspClient << "Set up the \"" << *scs.m_subsession << "\" subsession (";
     if (scs.m_subsession->rtcpIsMuxed())
