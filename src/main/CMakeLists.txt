@@ -1,24 +1,6 @@
 
 set(main_src
   main.cpp
-  packetqueue.h
-  packetqueue.cpp
-  audiodecoder.h
-  audiodecoder.cpp
-  audioresamplingstate.h
-  audioresamplingstate.cpp
-  videodecoder.h
-  videodecoder.cpp
-  videopicture.h
-  videoreader.h
-  videoreader.cpp
-  videostate.h
-  videostate.cpp
-  videorenderer.h
-  videorenderer.cpp
-  myavpacketlist.h
-  stringhelper.h
-  options.h
 )
 
 add_executable(
@@ -37,6 +19,7 @@ if(WIN32)
     ${FFMPEG_PATH_LIB}/avutil.lib
     ${FFMPEG_PATH_LIB}/swresample.lib
     ${FFMPEG_PATH_LIB}/swscale.lib
+    live555::live555
     SDL2::SDL2
   )
 else()
@@ -45,6 +28,7 @@ else()
     ${PROJECT_NAME}
     PkgConfig::FFMPEG
     SDL2::SDL2
+    live555::live555
   )
 endif()
 

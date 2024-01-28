@@ -10,7 +10,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 add_definitions(-DWIN32_LEAN_AND_MEAN -DNOMINMAX -DUNICODE -D_UNICODE)
@@ -58,14 +58,42 @@ if (WIN32)
     message(FATAL_ERROR "!!!!!!!! SDL2_PATH IS NOT SET !!!!!!!!")
   endif(DEFINED SDL2_PATH)
 
+  if(DEFINED LIVE555_PATH)
+    list(APPEND CMAKE_PREFIX_PATH ${LIVE555_PATH})
+  else()
+    message(FATAL_ERROR "!!!!!!!! LIVE555_PATH IS NOT SET !!!!!!!!")
+  endif(DEFINED LIVE555_PATH)
+
+  if(DEFINED OPENSSL_PATH)
+    list(APPEND CMAKE_PREFIX_PATH ${OPENSSL_PATH})
+  else()
+    message(FATAL_ERROR "!!!!!!!! OPENSSL_PATH IS NOT SET !!!!!!!!")
+  endif(DEFINED OPENSSL_PATH)
+
   set(FFMPEG_PATH_BIN ${FFMPEG_PATH}/bin)
   set(FFMPEG_PATH_INC ${FFMPEG_PATH}/include)
   set(FFMPEG_PATH_LIB ${FFMPEG_PATH}/lib)
 
+  # Set live555 various
+  set(LIVE555_PATH_BIN ${LIVE555_PATH}/bin)
+  set(LIVE555_PATH_INC ${LIVE555_PATH}/include)
+  set(LIVE555_PATH_LIB ${LIVE555_PATH}/lib)
+  set(LIVE555_INC_BASICUSAGEENV ${LIVE555_PATH_INC}/basicusageenvironment)
+  set(LIVE555_INC_EPOLLTASKSCHE ${LIVE555_PATH_INC}/epolltaskscheduler)
+  set(LIVE555_INC_GROUPSOCK ${LIVE555_PATH_INC}/groupsock)
+  set(LIVE555_INC_LIVEMEDIA ${LIVE555_PATH_INC}/livemedia)
+  set(LIVE555_INC_USAGEENV ${LIVE555_PATH_INC}/usageenvironment)
+
+  # Find the OpenSSL, Live555, SDL2
+  find_package(OpenSSL REQUIRED)
+  find_package(live555 REQUIRED)
   find_package(SDL2 REQUIRED)
 
   # Set up the copy dll list
   set(EXTERNAL_DLLS
+    ${LIVE555_PATH_BIN}/$<IF:$<CONFIG:Debug>,Debug,Release>/live555.dll
+    ${OPENSSL_PATH}/libcrypto-3-x64.dll
+    ${OPENSSL_PATH}/libssl-3-x64.dll
     ${FFMPEG_PATH_BIN}/avcodec-60.dll
     ${FFMPEG_PATH_BIN}/avdevice-60.dll
     ${FFMPEG_PATH_BIN}/avfilter-9.dll
@@ -78,6 +106,11 @@ if (WIN32)
 
   # Set the ffmpeg, sdl2, version.h include directory
   include_directories(
+    ${LIVE555_INC_BASICUSAGEENV}
+    ${LIVE555_INC_EPOLLTASKSCHE}
+    ${LIVE555_INC_GROUPSOCK}
+    ${LIVE555_INC_LIVEMEDIA}
+    ${LIVE555_INC_USAGEENV}
     ${FFMPEG_PATH_INC}
     ${SDL2_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR} # For version.h
