@@ -1,6 +1,8 @@
 
 set(main_src
   main.cpp
+  streamclientstate.cpp
+  streamclientstate.h
 )
 
 add_executable(
