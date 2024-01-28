@@ -3,6 +3,8 @@ set(main_src
   main.cpp
   streamclientstate.cpp
   streamclientstate.h
+  basertspclient.cpp
+  basertspclient.h
 )
 
 add_executable(
