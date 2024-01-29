@@ -4,7 +4,7 @@
 #include <string>
 #include "streamclientstate.h"
 #include "basertspclient.h"
-//#include "sdlvideosink.h"
+#include "videosink.h"
 
 namespace client
 {
@@ -16,7 +16,9 @@ public:
   ~RtspController() = default;
 
   // The main streaming routine (for each "rtsp://" URL):
-  void openURL(UsageEnvironment& env, char const* progName, char const* rtspURL);
+  void openURL(char const* progName, char const* rtspURL);
+  bool isRtspClientFinished();
+  void eventloop();
 
 private:
   // RTSP 'response handlers':
@@ -36,8 +38,7 @@ private:
   // Used to shut down and close a stream (including its "RTSPClient" object):
   static void shutdownStream(RTSPClient* rtspClient, int exitCode = 1);
 
-  // Counts how many streams (i.e., "RTSPClient"s) are currently in use.
-  static unsigned m_rtspClientCount;
+  UsageEnvironment* m_env = nullptr;
 };
 
 } // client

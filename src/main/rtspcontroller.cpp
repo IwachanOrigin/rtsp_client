@@ -10,19 +10,26 @@ constexpr int RTSP_CLIENT_VERBOSITY_LEVEL = 1;
 // If, instead, you want to request that the server stream via RTP-over-TCP, change the following to True:
 constexpr bool REQUEST_STREAMING_OVER_TCP = false;
 
+// Counts how many streams (i.e., "RTSPClient"s) are currently in use.
+static unsigned m_rtspClientCount;
+
 RtspController::RtspController()
 {
   m_rtspClientCount = 0;
 }
 
-void RtspController::openURL(UsageEnvironment& env, char const* progName, char const* rtspURL)
+void RtspController::openURL(char const* progName, char const* rtspURL)
 {
+  // Begin by setting up our usage environment:
+  TaskScheduler* scheduler = BasicTaskScheduler::createNew();
+  m_env = BasicUsageEnvironment::createNew(*scheduler);
+
   // Begin by creating a "RTSPClient" object.  Note that there is a separate "RTSPClient" object for each stream that we wish
   // to receive (even if more than stream uses the same "rtsp://" URL).
-  RTSPClient* rtspClient = BaseRtspClient::createNew(env, rtspURL, RTSP_CLIENT_VERBOSITY_LEVEL, progName);
+  RTSPClient* rtspClient = BaseRtspClient::createNew(*m_env, rtspURL, RTSP_CLIENT_VERBOSITY_LEVEL, progName);
   if (rtspClient == NULL)
   {
-    env << "Failed to create a RTSP client for URL \"" << rtspURL << "\": " << env.getResultMsg() << "\n";
+    *m_env << "Failed to create a RTSP client for URL \"" << rtspURL << "\": " << m_env->getResultMsg() << "\n";
     return;
   }
 
@@ -32,6 +39,22 @@ void RtspController::openURL(UsageEnvironment& env, char const* progName, char c
   // Note that this command - like all RTSP commands - is sent asynchronously; we do not block, waiting for a response.
   // Instead, the following function call returns immediately, and we handle the RTSP response later, from within the event loop:
   rtspClient->sendDescribeCommand(client::RtspController::continueAfterDESCRIBE);
+}
+
+bool RtspController::isRtspClientFinished()
+{
+  if (m_rtspClientCount <= 0)
+  {
+    return true;
+  }
+  return false;
+}
+
+void RtspController::eventloop()
+{
+  char eventLoopWatchVariable = 0;
+  m_env->taskScheduler().doEventLoop(&eventLoopWatchVariable);
+  // This function call does not return, unless, at some point in time, "eventLoopWatchVariable" gets set to something non-zero.
 }
 
 void RtspController::continueAfterDESCRIBE(RTSPClient* rtspClient, int resultCode, char* resultString)
@@ -107,7 +130,7 @@ void RtspController::continueAfterSETUP(RTSPClient* rtspClient, int resultCode, 
     // (This will prepare the data sink to receive data; the actual flow of data from the client won't start happening until later,
     // after we've sent a RTSP "PLAY" command.)
 
-    subsession->sink = SdlVideoSink::createNew(env, subsession, rtspClient->url());
+    subsession->sink = VideoSink::createNew(env, *subsession, rtspClient->url());
     // perhaps use your own custom "MediaSink" subclass instead
     if (subsession->sink == NULL)
     {

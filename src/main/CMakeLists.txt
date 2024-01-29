@@ -1,10 +1,14 @@
 
 set(main_src
-  main.cpp
-  streamclientstate.cpp
-  streamclientstate.h
   basertspclient.cpp
   basertspclient.h
+  main.cpp
+  rtspcontroller.cpp
+  rtspcontroller.h
+  streamclientstate.cpp
+  streamclientstate.h
+  videosink.cpp
+  videosink.h
 )
 
 add_executable(

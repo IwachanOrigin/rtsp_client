@@ -5,7 +5,7 @@ using namespace client;
 
 StreamClientState::~StreamClientState()
 {
-  delete m_iter;
+  delete m_iterator;
   if (m_session != nullptr)
   {
     UsageEnvironment& env = m_session->envir();
