@@ -201,7 +201,6 @@ void RtspController::continueAfterPLAY(RTSPClient* rtspClient, int resultCode, c
   }
 }
 
-
 void RtspController::subsessionAfterPlaying(void* clientData)
 {
   // called when a stream's subsession (e.g., audio or video substream) ends

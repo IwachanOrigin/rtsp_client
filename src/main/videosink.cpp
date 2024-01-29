@@ -3,6 +3,7 @@
 #include <H264VideoRTPSource.hh>
 #include <cassert>
 #include <iostream>
+#include <algorithm>
 
 using namespace client;
 
@@ -10,7 +11,7 @@ using namespace client;
 // Define the size of the buffer that we'll use:
 #define DUMMY_SINK_RECEIVE_BUFFER_SIZE 1000000
 
-VideoSink* VideoSink::createNew(UsageEnvironment& env, MediaSubsession& subsession, char const* streamId)
+VideoSink* VideoSink::createNew(UsageEnvironment& env, MediaSubsession& subsession,  char const* streamId)
 {
   return new VideoSink(env, subsession, streamId);
 }
@@ -21,7 +22,7 @@ VideoSink::VideoSink(UsageEnvironment& env, MediaSubsession& subsession, char co
 {
   m_streamId = strDup(streamId);
   m_receiveBuffer = new u_int8_t[DUMMY_SINK_RECEIVE_BUFFER_SIZE];
-  this->initDecRender();
+  this->initDecRender(m_subsession.codecName());
 }
 
 VideoSink::~VideoSink()
@@ -58,11 +59,25 @@ void VideoSink::afterGettingFrame(
   uint8_t startCode[4] = {0x00, 0x00, 0x00, 0x01};
 
   auto packet = av_packet_alloc();
-  packet->size = frameSize + startCodeLength;
-  packet->data = new uint8_t[frameSize + 4];
+  switch (m_videoCodec->id)
+  {
+    case AV_CODEC_ID_H264:
+    {
+      packet->size = frameSize + startCodeLength;
+      packet->data = new uint8_t[frameSize + 4];
+      std::memcpy(packet->data, startCode, startCodeLength);
+      std::memcpy(packet->data + 4, m_receiveBuffer, frameSize);
+    }
+    break;
 
-  std::memcpy(packet->data, startCode, startCodeLength);
-  std::memcpy(packet->data + 4, m_receiveBuffer, frameSize);
+    default:
+    {
+      packet->size = frameSize;
+      packet->data = new uint8_t[frameSize];
+      std::memcpy(packet->data, m_receiveBuffer, frameSize);
+    }
+    break;
+  }
 
   if (avcodec_send_packet(m_videoCodecContext, packet) != 0)
   {
@@ -102,16 +117,23 @@ Boolean VideoSink::continuePlaying()
   return True;
 }
 
-bool VideoSink::initDecRender()
+bool VideoSink::initDecRender(std::string codecString)
 {
-  const AVCodec* codec = avcodec_find_decoder(AV_CODEC_ID_H264);
-  assert(codec);
+  // string lower. ex. H264 to h264...
+  std::transform(codecString.begin(), codecString.end(), codecString.begin(), [](unsigned char c)
+  {
+    return std::tolower(c);
+  });
+  
+  m_videoCodec = avcodec_find_decoder_by_name(codecString.data());
+  assert(m_videoCodec);
 
-  m_videoCodecContext = avcodec_alloc_context3(codec);
+  m_videoCodecContext = avcodec_alloc_context3(m_videoCodec);
   assert(m_videoCodecContext);
-  if (avcodec_open2(m_videoCodecContext, codec, nullptr) < 0)
+  if (avcodec_open2(m_videoCodecContext, m_videoCodec, nullptr) < 0)
   {
     std::cerr << "Failed to avcodec_open2 func." << std::endl;
+    std::cerr << "Codec ID is " << m_videoCodec->id << std::endl;
     return false;
   }
 
