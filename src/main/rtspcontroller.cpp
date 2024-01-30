@@ -13,9 +13,12 @@ constexpr bool REQUEST_STREAMING_OVER_TCP = false;
 // Counts how many streams (i.e., "RTSPClient"s) are currently in use.
 static unsigned m_rtspClientCount;
 
+static MediaSubsession* m_workMediaSubsession;
+
 RtspController::RtspController()
 {
   m_rtspClientCount = 0;
+  m_workMediaSubsession = nullptr;
 }
 
 void RtspController::openURL(char const* progName, char const* rtspURL)
@@ -107,30 +110,57 @@ void RtspController::continueAfterSETUP(RTSPClient* rtspClient, int resultCode, 
   do {
     UsageEnvironment& env = rtspClient->envir(); // alias
     StreamClientState& scs = ((BaseRtspClient*)rtspClient)->streamClientState(); // alias
-    auto& subsession = scs.subsession();
+    MediaSubsession* subsession = nullptr;
+
+    if (!m_workMediaSubsession)
+    {
+      break;
+    }
 
     if (resultCode != 0)
     {
-      env << "[URL:\"" << rtspClient->url() << "\"]: " << "Failed to set up the \"" << subsession << "\" subsession: " << resultString << "\n";
+      env << "[URL:\"" << rtspClient->url() << "\"]: " << "Failed to set up the \"" << m_workMediaSubsession << "\" subsession: " << resultString << "\n";
       break;
     }
 
     env << "[URL:\"" << rtspClient->url() << "\"]: " << "Set up the \"" << subsession << "\" subsession (";
-    if (subsession->rtcpIsMuxed())
+    if (m_workMediaSubsession->rtcpIsMuxed())
     {
-      env << "client port " << subsession->clientPortNum();
+      env << "client port " << m_workMediaSubsession->clientPortNum();
     }
     else
     {
-      env << "client ports " << subsession->clientPortNum() << "-" << subsession->clientPortNum()+1;
+      env << "client ports " << m_workMediaSubsession->clientPortNum() << "-" << m_workMediaSubsession->clientPortNum() + 1;
     }
     env << ")\n";
 
-    // Having successfully setup the subsession, create a data sink for it, and call "startPlaying()" on it.
-    // (This will prepare the data sink to receive data; the actual flow of data from the client won't start happening until later,
-    // after we've sent a RTSP "PLAY" command.)
+    env << "subsession : " << m_workMediaSubsession->mediumName() << "/" << m_workMediaSubsession->codecName() << "\n";
+    const std::string mediaVideo = "video";
+    const std::string mediaAudio = "audio";
+    if (mediaVideo.compare(m_workMediaSubsession->mediumName()) == 0) // Video
+    {
+      subsession = scs.videoSubsession();
+      subsession = m_workMediaSubsession;
+      // Having successfully setup the subsession, create a data sink for it, and call "startPlaying()" on it.
+      // (This will prepare the data sink to receive data; the actual flow of data from the client won't start happening until later,
+      // after we've sent a RTSP "PLAY" command.)
+      subsession->sink = VideoSink::createNew(env, *subsession, rtspClient->url());
+    }
+    else if (mediaAudio.compare(m_workMediaSubsession->mediumName()) == 0) // Audio
+    {
+      subsession = scs.audioSubsession();
+      subsession = m_workMediaSubsession;
+      // Having successfully setup the subsession, create a data sink for it, and call "startPlaying()" on it.
+      // (This will prepare the data sink to receive data; the actual flow of data from the client won't start happening until later,
+      // after we've sent a RTSP "PLAY" command.)
+      //subsession->sink = VideoSink::createNew(env, *subsession, rtspClient->url());
+      continue;
+    }
+    else
+    {
+      continue;
+    }
 
-    subsession->sink = VideoSink::createNew(env, *subsession, rtspClient->url());
     // perhaps use your own custom "MediaSink" subclass instead
     if (subsession->sink == NULL)
     {
@@ -262,8 +292,7 @@ void RtspController::setupNextSubsession(RTSPClient* rtspClient)
 {
   UsageEnvironment& env = rtspClient->envir(); // alias
   StreamClientState& scs = ((BaseRtspClient*)rtspClient)->streamClientState(); // alias
-  auto& subsession = scs.subsession();
-  subsession = scs.iterator()->next();
+  auto subsession = scs.iterator()->next();
 
   if (subsession != nullptr)
   {
@@ -285,6 +314,7 @@ void RtspController::setupNextSubsession(RTSPClient* rtspClient)
       }
       env << ")\n";
 
+      m_workMediaSubsession = subsession;
       // Continue setting up this subsession, by sending a RTSP "SETUP" command:
       rtspClient->sendSetupCommand(*subsession, continueAfterSETUP, False, REQUEST_STREAMING_OVER_TCP);
     }

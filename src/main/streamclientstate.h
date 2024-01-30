@@ -16,7 +16,8 @@ public:
 
   MediaSubsessionIterator*& iterator() { return m_iterator; }
   MediaSession*& session() { return m_session; }
-  MediaSubsession*& subsession() { return m_subsession; }
+  MediaSubsession*& audioSubsession() { return m_audioSubsession; }
+  MediaSubsession*& videoSubsession() { return m_videoSubsession; }
   TaskToken& streamTimerTask() { return m_streamTimerTask; }
   double& duration() { return m_duration; }
   void setDuration(const double& duration) { m_duration = duration; }
@@ -24,7 +25,8 @@ public:
 private:
   MediaSubsessionIterator* m_iterator = nullptr;
   MediaSession* m_session = nullptr;
-  MediaSubsession* m_subsession = nullptr;
+  MediaSubsession* m_audioSubsession = nullptr;
+  MediaSubsession* m_videoSubsession = nullptr;
   TaskToken m_streamTimerTask = nullptr;
   double m_duration = 0.0;
 };
