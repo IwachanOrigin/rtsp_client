@@ -105,7 +105,7 @@ bool AudioSink::init(char const* streamId)
   auto ret = avformat_open_input(&pFormatCtx, streamId, nullptr, nullptr);
   if (ret < 0)
   {
-    std::cerr << "Could not url " << streamId << std::endl;
+    std::cerr << "Could not open url " << streamId << std::endl;
     return false;
   }
 

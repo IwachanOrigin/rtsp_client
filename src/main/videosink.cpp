@@ -123,7 +123,7 @@ bool VideoSink::init(char const* streamURL)
   auto ret = avformat_open_input(&pFormatCtx, streamURL, nullptr, nullptr);
   if (ret < 0)
   {
-    std::cerr << "Could not url " << streamURL << std::endl;
+    std::cerr << "Could not open url " << streamURL << std::endl;
     return false;
   }
 
