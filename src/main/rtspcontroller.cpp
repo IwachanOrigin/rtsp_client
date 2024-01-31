@@ -1,5 +1,10 @@
 
+#include <string>
 #include "rtspcontroller.h"
+#include "streamclientstate.h"
+#include "basertspclient.h"
+#include "videosink.h"
+#include "audiosink.h"
 
 using namespace client;
 
@@ -153,8 +158,7 @@ void RtspController::continueAfterSETUP(RTSPClient* rtspClient, int resultCode, 
       // Having successfully setup the subsession, create a data sink for it, and call "startPlaying()" on it.
       // (This will prepare the data sink to receive data; the actual flow of data from the client won't start happening until later,
       // after we've sent a RTSP "PLAY" command.)
-      //subsession->sink = VideoSink::createNew(env, *subsession, rtspClient->url());
-      continue;
+      subsession->sink = AudioSink::createNew(env, *subsession, rtspClient->url());
     }
     else
     {
@@ -162,7 +166,7 @@ void RtspController::continueAfterSETUP(RTSPClient* rtspClient, int resultCode, 
     }
 
     // perhaps use your own custom "MediaSink" subclass instead
-    if (subsession->sink == NULL)
+    if (subsession->sink == nullptr)
     {
       env << "[URL:\"" << rtspClient->url() << "\"]: " << "Failed to create a data sink for the \"" << subsession << "\" subsession: " << env.getResultMsg() << "\n";
       break;

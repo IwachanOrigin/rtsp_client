@@ -1,10 +1,6 @@
 
 #include <liveMedia.hh>
 #include <BasicUsageEnvironment.hh>
-#include <string>
-#include "streamclientstate.h"
-#include "basertspclient.h"
-#include "videosink.h"
 
 namespace client
 {

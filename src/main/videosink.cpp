@@ -22,7 +22,7 @@ VideoSink::VideoSink(UsageEnvironment& env, MediaSubsession& subsession, char co
 {
   m_streamId = strDup(streamId);
   m_receiveBuffer = new u_int8_t[DUMMY_SINK_RECEIVE_BUFFER_SIZE];
-  this->initDecRender(m_subsession.codecName());
+  this->init(m_subsession.codecName());
 }
 
 VideoSink::~VideoSink()
@@ -81,14 +81,14 @@ void VideoSink::afterGettingFrame(
 
   if (avcodec_send_packet(m_videoCodecContext, packet) != 0)
   {
-    envir() << "Failed to send pacekkt to decoder." << "\n";
+    envir() << "Failed to send packet to decoder." << "\n";
   }
 
   auto frame = av_frame_alloc();
   while (avcodec_receive_frame(m_videoCodecContext, frame) == 0)
   {
     // To queue
-    envir() << "decode." << "\n";
+    envir() << "video decoded." << "\n";
   }
 
   av_packet_unref(packet);
@@ -117,14 +117,13 @@ Boolean VideoSink::continuePlaying()
   return True;
 }
 
-bool VideoSink::initDecRender(std::string codecString)
+bool VideoSink::init(std::string codecString)
 {
   // string lower. ex. H264 to h264...
   std::transform(codecString.begin(), codecString.end(), codecString.begin(), [](unsigned char c)
   {
     return std::tolower(c);
   });
-  
   m_videoCodec = avcodec_find_decoder_by_name(codecString.data());
   assert(m_videoCodec);
 

@@ -1,5 +1,7 @@
 
 set(main_src
+  audiosink.cpp
+  audiosink.h
   basertspclient.cpp
   basertspclient.h
   main.cpp
