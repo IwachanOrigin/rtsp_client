@@ -25,10 +25,10 @@ namespace client
 class VideoSink : public MediaSink
 {
 public:
-  static VideoSink* createNew(UsageEnvironment& env, MediaSubsession& subsession, char const* streamId = nullptr);
+  static VideoSink* createNew(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL);
 
 private:
-  explicit VideoSink(UsageEnvironment& env, MediaSubsession& subsession, char const* stramId);
+  explicit VideoSink(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL);
   virtual ~VideoSink();
 
   static void afterGettingFrame(void* clientData, unsigned frameSize, unsigned numTruncatedBytes
@@ -37,17 +37,17 @@ private:
                          , struct timeval presentationTime, unsigned durationInMicroseconds);
 
   virtual Boolean continuePlaying();
-  bool init(const std::string codecString);
+  bool init(char const* streamURL);
+  void releaseFormatCtx(AVFormatContext*& formatctx);
 
   u_int8_t* m_receiveBuffer = nullptr;
   MediaSubsession& m_subsession;
-  char* m_streamId = nullptr;
-  const AVCodec* m_videoCodec = nullptr;
+  char* m_streamURL = nullptr;
 
   AVCodecContext* m_videoCodecContext = nullptr;
 };
 
-} // player
+} // client
 
 #endif // VIDEO_SINK_H_
 

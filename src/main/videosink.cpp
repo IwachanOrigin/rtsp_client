@@ -11,24 +11,24 @@ using namespace client;
 // Define the size of the buffer that we'll use:
 #define DUMMY_SINK_RECEIVE_BUFFER_SIZE 1000000
 
-VideoSink* VideoSink::createNew(UsageEnvironment& env, MediaSubsession& subsession,  char const* streamId)
+VideoSink* VideoSink::createNew(UsageEnvironment& env, MediaSubsession& subsession,  char const* streamURL)
 {
-  return new VideoSink(env, subsession, streamId);
+  return new VideoSink(env, subsession, streamURL);
 }
 
-VideoSink::VideoSink(UsageEnvironment& env, MediaSubsession& subsession, char const* streamId)
+VideoSink::VideoSink(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL)
   : MediaSink(env)
   , m_subsession(subsession)
 {
-  m_streamId = strDup(streamId);
+  m_streamURL = strDup(streamURL);
   m_receiveBuffer = new u_int8_t[DUMMY_SINK_RECEIVE_BUFFER_SIZE];
-  this->init(m_subsession.codecName());
+  this->init(streamURL);
 }
 
 VideoSink::~VideoSink()
 {
   delete[] m_receiveBuffer;
-  delete[] m_streamId;
+  delete[] m_streamURL;
 
   if (m_videoCodecContext)
   {
@@ -59,7 +59,7 @@ void VideoSink::afterGettingFrame(
   uint8_t startCode[4] = {0x00, 0x00, 0x00, 0x01};
 
   auto packet = av_packet_alloc();
-  switch (m_videoCodec->id)
+  switch (m_videoCodecContext->codec_id)
   {
     case AV_CODEC_ID_H264:
     {
@@ -102,7 +102,7 @@ void VideoSink::afterGettingFrame(
 
 Boolean VideoSink::continuePlaying()
 {
-  if (fSource == NULL)
+  if (fSource == nullptr)
   {
     return False; // sanity check (should not happen)
   }
@@ -117,25 +117,75 @@ Boolean VideoSink::continuePlaying()
   return True;
 }
 
-bool VideoSink::init(std::string codecString)
+bool VideoSink::init(char const* streamURL)
 {
-  // string lower. ex. H264 to h264...
-  std::transform(codecString.begin(), codecString.end(), codecString.begin(), [](unsigned char c)
+  AVFormatContext* pFormatCtx = nullptr;
+  auto ret = avformat_open_input(&pFormatCtx, streamURL, nullptr, nullptr);
+  if (ret < 0)
   {
-    return std::tolower(c);
-  });
-  m_videoCodec = avcodec_find_decoder_by_name(codecString.data());
-  assert(m_videoCodec);
-
-  m_videoCodecContext = avcodec_alloc_context3(m_videoCodec);
-  assert(m_videoCodecContext);
-  if (avcodec_open2(m_videoCodecContext, m_videoCodec, nullptr) < 0)
-  {
-    std::cerr << "Failed to avcodec_open2 func." << std::endl;
-    std::cerr << "Codec ID is " << m_videoCodec->id << std::endl;
+    std::cerr << "Could not url " << streamURL << std::endl;
     return false;
   }
+
+  // Read packets of the media file to get stream info
+  ret = avformat_find_stream_info(pFormatCtx, nullptr);
+  if (ret < 0)
+  {
+    std::cerr << "Could not find stream info " << streamURL << std::endl;
+    this->releaseFormatCtx(pFormatCtx);
+    return false;
+  }
+
+  // Loop through the streams that have been found
+  auto videoStream = -1;
+  for (int i = 0; i < pFormatCtx->nb_streams; i++)
+  {
+    // Look for the audio stream
+    if (pFormatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO && videoStream < 0)
+    {
+      videoStream = i;
+    }
+  }
+
+  if (videoStream < 0)
+  {
+    std::cerr << "Could not find audio stream index." << std::endl;
+    this->releaseFormatCtx(pFormatCtx);
+    return false;
+  }
+
+  // Retrieve codec for the given stream index
+  const AVCodec* codec = avcodec_find_decoder(pFormatCtx->streams[videoStream]->codecpar->codec_id);
+  assert(codec);
+  if (codec == nullptr)
+  {
+    std::cerr << "Unsupported codec" << std::endl;
+    this->releaseFormatCtx(pFormatCtx);
+    return false;
+  }
+
+  m_videoCodecContext = avcodec_alloc_context3(codec);
+  assert(m_videoCodecContext);
+  if (avcodec_open2(m_videoCodecContext, codec, nullptr) < 0)
+  {
+    std::cerr << "Failed to avcodec_open2 func." << std::endl;
+    std::cerr << "Codec ID is " << codec->id << std::endl;
+    this->releaseFormatCtx(pFormatCtx);
+    return false;
+  }
+
+  // Release 
+  this->releaseFormatCtx(pFormatCtx);
 
   return true;
 }
 
+void VideoSink::releaseFormatCtx(AVFormatContext*& formatctx)
+{
+  if (formatctx)
+  {
+    // Close the opened input AVFormatContext
+    avformat_close_input(&formatctx);
+  }
+  formatctx = nullptr;
+}
