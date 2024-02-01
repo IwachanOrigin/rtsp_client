@@ -4,7 +4,7 @@
 using namespace client;
 
 FrameQueue::FrameQueue()
-  : m_maxSize(300)
+  : m_maxSize(50)
 {
 }
 
