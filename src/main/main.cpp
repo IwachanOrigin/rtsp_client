@@ -1,6 +1,9 @@
 
-#include <chrono>
-#include <thread>
+extern "C"
+{
+#include <SDL.h>
+}
+
 #include <iostream>
 #include "rtspcontroller.h"
 
@@ -10,7 +13,12 @@ int main(int argc, char* argv[])
 {
   if (argc < 2)
   {
-    std::cerr << argv[0] << " <rtsp url>" << std::endl;
+    std::cerr << argv[0] << " <rtsp url 1> ... <rtsp url N>" << std::endl;
+    return -1;
+  }
+
+  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER))
+  {
     return -1;
   }
 
@@ -22,6 +30,11 @@ int main(int argc, char* argv[])
 
   // Start to Live555 event loop.
   controller.eventloop();
-  
+
+  // Quit
+  SDL_VideoQuit();
+  SDL_AudioQuit();
+  SDL_Quit();
+
   return 0;
 }

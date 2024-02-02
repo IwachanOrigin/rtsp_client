@@ -3,7 +3,6 @@
 #include <H264VideoRTPSource.hh>
 #include <cassert>
 #include <iostream>
-#include <algorithm>
 
 using namespace client;
 
@@ -11,14 +10,15 @@ using namespace client;
 // Define the size of the buffer that we'll use:
 #define DUMMY_SINK_RECEIVE_BUFFER_SIZE 1000000
 
-VideoSink* VideoSink::createNew(UsageEnvironment& env, MediaSubsession& subsession,  char const* streamURL)
+VideoSink* VideoSink::createNew(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL, std::shared_ptr<FrameContainer> frameContainer)
 {
-  return new VideoSink(env, subsession, streamURL);
+  return new VideoSink(env, subsession, streamURL, frameContainer);
 }
 
-VideoSink::VideoSink(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL)
+VideoSink::VideoSink(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL, std::shared_ptr<FrameContainer> frameContainer)
   : MediaSink(env)
   , m_subsession(subsession)
+  , m_frameContainer(frameContainer)
 {
   m_streamURL = strDup(streamURL);
   m_receiveBuffer = new u_int8_t[DUMMY_SINK_RECEIVE_BUFFER_SIZE];
@@ -88,6 +88,10 @@ void VideoSink::afterGettingFrame(
   while (avcodec_receive_frame(m_videoCodecContext, frame) == 0)
   {
     // To queue
+    if (m_frameContainer)
+    {
+      m_frameContainer->pushVideoFrameDecoded(frame);
+    }
     envir() << "video decoded." << "\n";
   }
 

@@ -4,11 +4,17 @@ set(main_src
   audiosink.h
   basertspclient.cpp
   basertspclient.h
+  framecontainer.cpp
+  framecontainer.h
+  framequeue.cpp
+  framequeue.h
   main.cpp
   rtspcontroller.cpp
   rtspcontroller.h
   streamclientstate.cpp
   streamclientstate.h
+  videorenderer.cpp
+  videorenderer.h
   videosink.cpp
   videosink.h
 )

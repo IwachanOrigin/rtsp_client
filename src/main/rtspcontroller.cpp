@@ -19,11 +19,15 @@ constexpr bool REQUEST_STREAMING_OVER_TCP = false;
 static unsigned m_rtspClientCount;
 
 static MediaSubsession* m_workMediaSubsession;
+static std::shared_ptr<FrameContainer> m_frameContainer;
+static std::unique_ptr<VideoRenderer> m_videoRenderer;
 
 RtspController::RtspController()
 {
   m_rtspClientCount = 0;
   m_workMediaSubsession = nullptr;
+  m_frameContainer = std::make_shared<FrameContainer>();
+  m_videoRenderer = std::make_unique<VideoRenderer>();
 }
 
 void RtspController::openURL(char const* progName, char const* rtspURL)
@@ -149,7 +153,12 @@ void RtspController::continueAfterSETUP(RTSPClient* rtspClient, int resultCode, 
       // Having successfully setup the subsession, create a data sink for it, and call "startPlaying()" on it.
       // (This will prepare the data sink to receive data; the actual flow of data from the client won't start happening until later,
       // after we've sent a RTSP "PLAY" command.)
-      subsession->sink = VideoSink::createNew(env, *subsession, rtspClient->url());
+      subsession->sink = VideoSink::createNew(env, *subsession, rtspClient->url(), m_frameContainer);
+      auto ret = m_videoRenderer->init(0, 0, 1920, 1080, m_frameContainer);
+      if (ret)
+      {
+        m_videoRenderer->start();
+      }
     }
     else if (mediaAudio.compare(m_workMediaSubsession->mediumName()) == 0) // Audio
     {
@@ -240,6 +249,24 @@ void RtspController::subsessionAfterPlaying(void* clientData)
   // called when a stream's subsession (e.g., audio or video substream) ends
   MediaSubsession* subsession = (MediaSubsession*)clientData;
   RTSPClient* rtspClient = (RTSPClient*)(subsession->miscPtr);
+
+  // Stop VideoRenderer
+  if (m_videoRenderer)
+  {
+    m_videoRenderer->stop();
+  }
+
+  // Release frames
+  const std::string mediaVideo = "video";
+  const std::string mediaAudio = "audio";
+  if (mediaVideo.compare(subsession->mediumName()) == 0) // Video
+  {
+    m_frameContainer->clearVideoFrameDecoded();
+  }
+  else if (mediaAudio.compare(subsession->mediumName()) == 0) // Audio
+  {
+    m_frameContainer->clearAudioFrameDecoded();
+  }
 
   // Begin by closing this subsession's stream:
   Medium::close(subsession->sink);

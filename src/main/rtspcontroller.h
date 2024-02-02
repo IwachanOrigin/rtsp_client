@@ -1,6 +1,9 @@
 
 #include <liveMedia.hh>
 #include <BasicUsageEnvironment.hh>
+#include <memory>
+#include "framecontainer.h"
+#include "videorenderer.h"
 
 namespace client
 {

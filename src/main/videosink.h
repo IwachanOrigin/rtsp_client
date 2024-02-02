@@ -2,8 +2,6 @@
 #ifndef VIDEO_SINK_H_
 #define VIDEO_SINK_H_
 
-#include <string>
-
 extern "C"
 {
 #include <libavcodec/avcodec.h>
@@ -19,16 +17,19 @@ extern "C"
 #include <liveMedia.hh>
 #include <BasicUsageEnvironment.hh>
 
+#include <memory>
+#include "framecontainer.h"
+
 namespace client
 {
 
 class VideoSink : public MediaSink
 {
 public:
-  static VideoSink* createNew(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL);
+  static VideoSink* createNew(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL, std::shared_ptr<FrameContainer> frameContainer);
 
 private:
-  explicit VideoSink(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL);
+  explicit VideoSink(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL, std::shared_ptr<FrameContainer> frameContainer);
   virtual ~VideoSink();
 
   static void afterGettingFrame(void* clientData, unsigned frameSize, unsigned numTruncatedBytes
@@ -45,6 +46,8 @@ private:
   char* m_streamURL = nullptr;
 
   AVCodecContext* m_videoCodecContext = nullptr;
+
+  std::shared_ptr<FrameContainer> m_frameContainer = nullptr;
 };
 
 } // client
