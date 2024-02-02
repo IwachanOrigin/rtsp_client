@@ -154,7 +154,7 @@ void RtspController::continueAfterSETUP(RTSPClient* rtspClient, int resultCode, 
       // (This will prepare the data sink to receive data; the actual flow of data from the client won't start happening until later,
       // after we've sent a RTSP "PLAY" command.)
       subsession->sink = VideoSink::createNew(env, *subsession, rtspClient->url(), m_frameContainer);
-      auto ret = m_videoRenderer->init(0, 0, 1920, 1080, m_frameContainer);
+      auto ret = m_videoRenderer->init(50, 50, 1920, 1080, m_frameContainer);
       if (ret)
       {
         m_videoRenderer->start();
