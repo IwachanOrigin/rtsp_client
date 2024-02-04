@@ -2,6 +2,7 @@
 #include "videorenderer.h"
 #include <cassert>
 #include <iostream>
+#include <thread>
 
 #define FF_REFRESH_EVENT (SDL_USEREVENT)
 #define FF_QUIT_EVENT    (SDL_USEREVENT + 1)
@@ -10,12 +11,11 @@ using namespace client;
 
 VideoRenderer::VideoRenderer()
 {
+  m_frameContainer = std::make_shared<FrameContainer>();
 }
 
 VideoRenderer::~VideoRenderer()
 {
-  this->stop();
-
   if (m_renderer)
   {
     SDL_DestroyRenderer(m_renderer);
@@ -41,7 +41,7 @@ VideoRenderer::~VideoRenderer()
   }
 }
 
-bool VideoRenderer::init(const int& x, const int& y, const int& w, const int& h, std::shared_ptr<FrameContainer> frameContainer)
+bool VideoRenderer::init(const int& x, const int& y, const int& w, const int& h, const std::vector<std::string>& vecURL)
 {
   {
     //int flags = SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS | SDL_WINDOW_TOOLTIP;
@@ -76,150 +76,109 @@ bool VideoRenderer::init(const int& x, const int& y, const int& w, const int& h,
     return false;
   }
 
-  m_frameContainer = frameContainer;
+  m_rtspController.setFrameContainer(m_frameContainer);
+
+  for (auto& url : vecURL)
+  {
+    m_rtspController.openURL("rtspClient", url.data());
+  }
+
+  std::thread([](RtspController* controller)
+    {
+      controller->eventloop();
+    }, &m_rtspController).detach();
 
   return true;
 }
 
-int VideoRenderer::start()
-{
-  // Start thread.
-  m_isStop = false;
-
-  std::thread([&](VideoRenderer *vr)
-  {
-    vr->displayThread();
-  }, this).detach();
-
-  return 0;
-}
-
-void VideoRenderer::stop()
-{
-  m_isStop = true;
-}
-
-int VideoRenderer::displayThread()
+int VideoRenderer::render()
 {
   SDL_Event sdlEvent{0};
   int ret = -1;
 
-  this->scheduleRefresh(100);
-
-  while (1)
-  {
-    if (m_isStop)
-    {
-      break;
-    }
-
-    double incr = 0, pos = 0;
-    // Wait indefinitely for the next available event
-    ret = SDL_WaitEvent(&sdlEvent);
-    if (ret == 0)
-    {
-      std::cerr << "SDL_WaitEvent failed : " << SDL_GetError() << std::endl;
-    }
-
-    // Switch on the retrieved event type
-    switch (sdlEvent.type)
-    {
-      case SDL_KEYDOWN:
-      {
-        switch (sdlEvent.key.keysym.sym)
-        {
-          case SDLK_LEFT:
-          {
-            incr = -10.0;
-            goto do_seek;
-          }
-          break;
-
-          case SDLK_RIGHT:
-          {
-            incr = 10.0;
-            goto do_seek;
-          }
-          break;
-
-          case SDLK_DOWN:
-          {
-            incr = -60.0;
-            goto do_seek;
-          }
-          break;
-
-          case SDLK_UP:
-          {
-            incr = 60.0;
-            goto do_seek;
-          }
-          break;
-
-          do_seek:
-          {
-            // Seek
-          }
-          break;
-
-          default:
-          {
-            // No action
-          }
-          break;
-        }
-      }
-      break;
-
-      case FF_QUIT_EVENT:
-      case SDL_QUIT:
-      {
-        // Finish
-        m_isStop = true;
-      }
-      break;
-
-      case FF_REFRESH_EVENT:
-      {
-        this->videoRefreshTimer();
-      }
-      break;
-    }
-  }
-
-  return 0;
-}
-
-Uint32 VideoRenderer::sdlRefreshTimerCb(Uint32 interval, void* param)
-{
-  // create an sdl event of type
-  SDL_Event sdlEvent{0};
-  sdlEvent.type = FF_REFRESH_EVENT;
-  sdlEvent.user.data1 = param;
-
-  // push the event to the events queue
-  SDL_PushEvent(&sdlEvent);
-
-  return 0;
-}
-
-void VideoRenderer::scheduleRefresh(int delay)
-{
-  // schedule an sdl timer
-  int ret = SDL_AddTimer(delay, this->sdlRefreshTimerCb, nullptr);
+  double incr = 0, pos = 0;
+  // Wait indefinitely for the next available event
+  ret = SDL_PollEvent(&sdlEvent);
   if (ret == 0)
   {
-    std::cerr << "Could not schedule refresh callback : " << SDL_GetError() << std::endl;
+    //return 1;
+    //std::cerr << "SDL_WaitEvent failed : " << SDL_GetError() << std::endl;
   }
+
+  // Switch on the retrieved event type
+  switch (sdlEvent.type)
+  {
+    case SDL_KEYDOWN:
+    {
+      switch (sdlEvent.key.keysym.sym)
+      {
+        case SDLK_LEFT:
+        {
+          incr = -10.0;
+          goto do_seek;
+        }
+        break;
+
+        case SDLK_RIGHT:
+        {
+          incr = 10.0;
+          goto do_seek;
+        }
+        break;
+
+        case SDLK_DOWN:
+        {
+          incr = -60.0;
+          goto do_seek;
+        }
+        break;
+
+        case SDLK_UP:
+        {
+          incr = 60.0;
+          goto do_seek;
+        }
+        break;
+
+        do_seek:
+        {
+          // Seek
+        }
+        break;
+
+        default:
+        {
+          // No action
+        }
+        break;
+      }
+    }
+    break;
+
+    case SDL_QUIT:
+    {
+      m_rtspController.setStopStreaming();
+      return -1;
+    }
+    break;
+  }
+
+  this->videoDisplay();
+
+  if (m_rtspController.isRtspClientFinished())
+  {
+    return -1;
+  }
+
+  return 0;
 }
 
-void VideoRenderer::videoRefreshTimer()
+int VideoRenderer::videoDisplay()
 {
   // Check the videopicture queue contains decoded frames
   if (m_frameContainer->sizeVideoFrameDecoded() == 0)
   {
-    this->scheduleRefresh(1);
-    return;
+    return -1;
   }
 
   // Get videopicture reference using the queue read index
@@ -227,7 +186,7 @@ void VideoRenderer::videoRefreshTimer()
   if (!frame)
   {
     std::cerr << "Could not allocate AVFrame" << std::endl;
-    return;
+    return -1;
   }
   auto isFrame = m_frameContainer->popVideoFrameDecoded(frame);
   if (isFrame < 0)
@@ -236,25 +195,7 @@ void VideoRenderer::videoRefreshTimer()
     // wipe the frame
     av_frame_free(&frame);
     av_free(frame);
-    this->scheduleRefresh(100);
-    return;
-  }
-
-  // TODO : Calculated PTS delay
-  this->scheduleRefresh(16);
-
-  // Show the frame on the sdl_surface
-  this->videoDisplay(frame);
-
-  av_frame_unref(frame);
-  av_frame_free(&frame);
-}
-
-void VideoRenderer::videoDisplay(AVFrame* frame)
-{
-  if (!frame)
-  {
-    return;
+    return -1;
   }
 
   // Lock screen mutex
@@ -283,5 +224,9 @@ void VideoRenderer::videoDisplay(AVFrame* frame)
 
   // Unlock screen mutex
   SDL_UnlockMutex(m_mutex);
+
+  // Release
+  av_frame_unref(frame);
+  av_frame_free(&frame);
 }
 

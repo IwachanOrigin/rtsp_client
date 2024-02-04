@@ -19,15 +19,14 @@ constexpr bool REQUEST_STREAMING_OVER_TCP = false;
 static unsigned m_rtspClientCount;
 
 static MediaSubsession* m_workMediaSubsession;
+
 static std::shared_ptr<FrameContainer> m_frameContainer;
-static std::unique_ptr<VideoRenderer> m_videoRenderer;
 
 RtspController::RtspController()
 {
   m_rtspClientCount = 0;
   m_workMediaSubsession = nullptr;
-  m_frameContainer = std::make_shared<FrameContainer>();
-  m_videoRenderer = std::make_unique<VideoRenderer>();
+  m_frameContainer = nullptr;
 }
 
 void RtspController::openURL(char const* progName, char const* rtspURL)
@@ -53,19 +52,28 @@ void RtspController::openURL(char const* progName, char const* rtspURL)
   rtspClient->sendDescribeCommand(client::RtspController::continueAfterDESCRIBE);
 }
 
+void RtspController::setFrameContainer(std::shared_ptr<FrameContainer> frameContainer)
+{
+  m_frameContainer = frameContainer;
+}
+
 bool RtspController::isRtspClientFinished()
 {
-  if (m_rtspClientCount <= 0)
+  if (m_rtspClientCount <= 0 || m_eventLoopWatchVariable != 0)
   {
     return true;
   }
   return false;
 }
 
+void RtspController::setStopStreaming()
+{
+  m_eventLoopWatchVariable = 1;
+}
+
 void RtspController::eventloop()
 {
-  char eventLoopWatchVariable = 0;
-  m_env->taskScheduler().doEventLoop(&eventLoopWatchVariable);
+  m_env->taskScheduler().doEventLoop(&m_eventLoopWatchVariable);
   // This function call does not return, unless, at some point in time, "eventLoopWatchVariable" gets set to something non-zero.
 }
 
@@ -154,11 +162,6 @@ void RtspController::continueAfterSETUP(RTSPClient* rtspClient, int resultCode, 
       // (This will prepare the data sink to receive data; the actual flow of data from the client won't start happening until later,
       // after we've sent a RTSP "PLAY" command.)
       subsession->sink = VideoSink::createNew(env, *subsession, rtspClient->url(), m_frameContainer);
-      auto ret = m_videoRenderer->init(50, 50, 1920, 1080, m_frameContainer);
-      if (ret)
-      {
-        m_videoRenderer->start();
-      }
     }
     else if (mediaAudio.compare(m_workMediaSubsession->mediumName()) == 0) // Audio
     {
@@ -249,12 +252,6 @@ void RtspController::subsessionAfterPlaying(void* clientData)
   // called when a stream's subsession (e.g., audio or video substream) ends
   MediaSubsession* subsession = (MediaSubsession*)clientData;
   RTSPClient* rtspClient = (RTSPClient*)(subsession->miscPtr);
-
-  // Stop VideoRenderer
-  if (m_videoRenderer)
-  {
-    m_videoRenderer->stop();
-  }
 
   // Release frames
   const std::string mediaVideo = "video";

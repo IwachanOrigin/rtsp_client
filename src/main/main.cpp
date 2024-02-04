@@ -5,7 +5,9 @@ extern "C"
 }
 
 #include <iostream>
-#include "rtspcontroller.h"
+#include <chrono>
+#include <thread>
+#include "videorenderer.h"
 
 #undef main
 
@@ -22,14 +24,24 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  client::RtspController controller;
-  for (int i = 1; i <= argc - 1; i++)
+  std::vector<std::string> vecURL;
+  for (int i = 1; i < argc; i++)
   {
-    controller.openURL(argv[0], argv[i]);
+    vecURL.push_back(argv[i]);
   }
 
-  // Start to Live555 event loop.
-  controller.eventloop();
+  std::chrono::milliseconds ms(1);
+  client::VideoRenderer renderer;
+  renderer.init(50, 50, 1920, 1080, vecURL);
+  while(1)
+  {
+    auto ret = renderer.render();
+    if (ret < 0)
+    {
+      break;
+    }
+    std::this_thread::sleep_for(ms);
+  }
 
   // Quit
   SDL_VideoQuit();

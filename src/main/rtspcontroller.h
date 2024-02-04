@@ -3,7 +3,6 @@
 #include <BasicUsageEnvironment.hh>
 #include <memory>
 #include "framecontainer.h"
-#include "videorenderer.h"
 
 namespace client
 {
@@ -16,7 +15,9 @@ public:
 
   // The main streaming routine (for each "rtsp://" URL):
   void openURL(char const* progName, char const* rtspURL);
+  void setFrameContainer(std::shared_ptr<FrameContainer> frameContainer);
   bool isRtspClientFinished();
+  void setStopStreaming();
   void eventloop();
 
 private:
@@ -38,6 +39,7 @@ private:
   static void shutdownStream(RTSPClient* rtspClient, int exitCode = 1);
 
   UsageEnvironment* m_env = nullptr;
+  char m_eventLoopWatchVariable = 0;
 };
 
 } // client

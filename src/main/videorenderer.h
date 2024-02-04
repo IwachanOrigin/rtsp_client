@@ -16,8 +16,10 @@ extern "C"
 #include <SDL_mutex.h>
 }
 
+#include "rtspcontroller.h"
 #include "framecontainer.h"
-#include <atomic>
+#include <string>
+#include <vector>
 
 namespace client
 {
@@ -28,9 +30,8 @@ public:
   explicit VideoRenderer();
   ~VideoRenderer();
 
-  bool init(const int& x, const int& y, const int& w, const int& h, std::shared_ptr<FrameContainer> frameContainer);
-  int start();
-  void stop();
+  bool init(const int& x, const int& y, const int& w, const int& h, const std::vector<std::string>& vecURL);
+  int render();
 
 private:
   SDL_Renderer* m_renderer = nullptr;
@@ -38,14 +39,10 @@ private:
   SDL_mutex* m_mutex = nullptr;
   SDL_Window* m_window = nullptr;
 
+  client::RtspController m_rtspController;
   std::shared_ptr<FrameContainer> m_frameContainer = nullptr;
-  std::atomic_bool m_isStop = false;
 
-  int displayThread();
-  static Uint32 sdlRefreshTimerCb(Uint32 interval, void* param);
-  void scheduleRefresh(int delay);
-  void videoRefreshTimer();
-  void videoDisplay(AVFrame* frame);
+  int videoDisplay();
 };
 
 } // client
