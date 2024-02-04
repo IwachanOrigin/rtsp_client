@@ -3,6 +3,8 @@
 #include <H264VideoRTPSource.hh>
 #include <cassert>
 #include <iostream>
+#include <chrono>
+#include <thread>
 
 using namespace client;
 
@@ -55,6 +57,12 @@ void VideoSink::afterGettingFrame(
   , struct timeval presentationTime
   , unsigned /*durationInMicroseconds*/)
 {
+  if (m_frameContainer->sizeVideoFrameDecoded() > 50)
+  {
+    std::chrono::milliseconds ms(1000);
+    std::this_thread::sleep_for(ms);
+  }
+
   const int startCodeLength = 4;
   uint8_t startCode[4] = {0x00, 0x00, 0x00, 0x01};
 
@@ -88,11 +96,7 @@ void VideoSink::afterGettingFrame(
   while (avcodec_receive_frame(m_videoCodecContext, frame) == 0)
   {
     // To queue
-    if (m_frameContainer)
-    {
-      m_frameContainer->pushVideoFrameDecoded(frame);
-    }
-    envir() << "video decoded." << "\n";
+    m_frameContainer->pushVideoFrameDecoded(frame);
   }
 
   av_packet_unref(packet);
