@@ -99,11 +99,6 @@ int VideoRenderer::render()
   double incr = 0, pos = 0;
   // Wait indefinitely for the next available event
   ret = SDL_PollEvent(&sdlEvent);
-  if (ret == 0)
-  {
-    //return 1;
-    //std::cerr << "SDL_WaitEvent failed : " << SDL_GetError() << std::endl;
-  }
 
   // Switch on the retrieved event type
   switch (sdlEvent.type)
@@ -228,5 +223,7 @@ int VideoRenderer::videoDisplay()
   // Release
   av_frame_unref(frame);
   av_frame_free(&frame);
+
+  return 0;
 }
 
