@@ -26,9 +26,7 @@ public:
   ~AudioRenderer();
 
   static void audioCallback(void* userdata, Uint8* stream, int len);
-  static int audioDecodeFrame(uint8_t* audio_buf, int buf_size, double& ptsPtr);
   static int audioResampling(AVFrame* decodedAudioFrame, AVSampleFormat outSampleFmt, uint8_t* outBuf);
-  static int syncAudio(short* samples, int& samplesSize);
   static void audioReleasePointer(AudioReSamplingState& arState);
 };
 
