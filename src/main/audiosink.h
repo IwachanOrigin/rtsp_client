@@ -19,16 +19,19 @@ extern "C"
 #include <liveMedia.hh>
 #include <BasicUsageEnvironment.hh>
 
+#include <memory>
+#include "framecontainer.h"
+
 namespace client
 {
 
 class AudioSink : public MediaSink
 {
 public:
-  static AudioSink* createNew(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL);
+  static AudioSink* createNew(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL, std::shared_ptr<FrameContainer> frameContainer);
 
 private:
-  explicit AudioSink(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL);
+  explicit AudioSink(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL, std::shared_ptr<FrameContainer> frameContainer);
   virtual ~AudioSink();
 
   static void afterGettingFrame(void* clientData, unsigned frameSize, unsigned numTruncatedBytes
@@ -45,6 +48,8 @@ private:
   char* m_streamURL = nullptr;
 
   AVCodecContext* m_audioCodecContext = nullptr;
+
+  std::shared_ptr<FrameContainer> m_frameContainer = nullptr;
 };
 
 } // player

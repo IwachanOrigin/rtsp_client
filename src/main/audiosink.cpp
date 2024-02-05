@@ -3,7 +3,6 @@
 #include <H264VideoRTPSource.hh>
 #include <cassert>
 #include <iostream>
-#include <algorithm>
 
 using namespace client;
 
@@ -11,14 +10,15 @@ using namespace client;
 // Define the size of the buffer that we'll use:
 #define DUMMY_SINK_RECEIVE_BUFFER_SIZE 1000000
 
-AudioSink* AudioSink::createNew(UsageEnvironment& env, MediaSubsession& subsession,  char const* streamURL)
+AudioSink* AudioSink::createNew(UsageEnvironment& env, MediaSubsession& subsession,  char const* streamURL, std::shared_ptr<FrameContainer> frameContainer)
 {
-  return new AudioSink(env, subsession, streamURL);
+  return new AudioSink(env, subsession, streamURL, frameContainer);
 }
 
-AudioSink::AudioSink(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL)
+AudioSink::AudioSink(UsageEnvironment& env, MediaSubsession& subsession, char const* streamURL, std::shared_ptr<FrameContainer> frameContainer)
   : MediaSink(env)
   , m_subsession(subsession)
+  , m_frameContainer(frameContainer)
 {
   m_streamURL = strDup(streamURL);
   m_receiveBuffer = new u_int8_t[DUMMY_SINK_RECEIVE_BUFFER_SIZE];
@@ -55,6 +55,12 @@ void AudioSink::afterGettingFrame(
   , struct timeval presentationTime
   , unsigned /*durationInMicroseconds*/)
 {
+  if (m_frameContainer->sizeAudioFrameDecoded() > 50)
+  {
+    std::chrono::milliseconds ms(1000);
+    std::this_thread::sleep_for(ms);
+  }
+
   auto packet = av_packet_alloc();
 
   packet->size = frameSize;
@@ -70,7 +76,8 @@ void AudioSink::afterGettingFrame(
   while (avcodec_receive_frame(m_audioCodecContext, frame) == 0)
   {
     // To queue
-    envir() << "audio decoded." << "\n";
+    m_frameContainer->pushAudioFrameDecoded(frame);
+    //envir() << "audio decoded." << "\n";
   }
 
   av_packet_unref(packet);
