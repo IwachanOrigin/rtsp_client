@@ -39,7 +39,7 @@ private:
 
   // Callback from audioCallback func.
   void internalAudioCallback(Uint8* stream, int len);
-  int audioResampling(AVFrame* decodedAudioFrame, AVSampleFormat outSampleFmt, std::unique_ptr<uint8_t>& outBuf);
+  int audioResampling(AVFrame* decodedAudioFrame, AVSampleFormat outSampleFmt, uint8_t* outBuf);
   void audioReleasePointer(AudioReSamplingState& arState);
 };
 

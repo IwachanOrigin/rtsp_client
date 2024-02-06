@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include <cassert>
+#include <array>
 #include "audiorenderer.h"
 
 using namespace client;
@@ -79,7 +80,7 @@ void AudioRenderer::internalAudioCallback(Uint8* stream, int len)
 {
   if (m_frameContainer->sizeAudioFrameDecoded() <= 0 && m_frameContainer->sizeVideoFrameDecoded() <= 0)
   {
-    SDL_PauseAudioDevice(m_sdlAudioDeviceIndex, 1);
+    //SDL_PauseAudioDevice(m_sdlAudioDeviceIndex, 1);
     return;
   }
 
@@ -94,7 +95,7 @@ void AudioRenderer::internalAudioCallback(Uint8* stream, int len)
   int audioBufferSize = 0;
   int len1 = 0;
   const int audioArrayBufferSize = (MAX_AUDIO_FRAME_SIZE * 3) / 2;
-  std::unique_ptr<uint8_t> audioBuf = std::make_unique<uint8_t>((MAX_AUDIO_FRAME_SIZE * 3) / 2);
+  uint8_t audioBuf[audioArrayBufferSize]{ 0 };
 
   while(len > 0)
   {
@@ -113,14 +114,14 @@ void AudioRenderer::internalAudioCallback(Uint8* stream, int len)
       auto audioSize = this->audioResampling(
         frame
         , AVSampleFormat::AV_SAMPLE_FMT_S16
-        , audioBuf);
+        , &audioBuf[0]);
 
       if (audioSize < 0)
       {
         // Output silence
         audioBufferSize = 1024;
         // Clear memory
-        std::memset(audioBuf.get(), 0, audioBufferSize);
+        std::memset(audioBuf, 0, audioBufferSize);
       }
       else
       {
@@ -138,7 +139,7 @@ void AudioRenderer::internalAudioCallback(Uint8* stream, int len)
     }
 
     // Copy data from audio buffer to the SDL stream
-    std::memcpy(stream, audioBuf.get() + audioBufferIndex, len1);
+    std::memcpy(stream, audioBuf + audioBufferIndex, len1);
 
     // Calculate the remaining length that needs to be written to the stream.
     len -= len1;
@@ -155,7 +156,7 @@ void AudioRenderer::internalAudioCallback(Uint8* stream, int len)
 int AudioRenderer::audioResampling(
   AVFrame* decodedAudioFrame
   , AVSampleFormat outSampleFmt
-  , std::unique_ptr<uint8_t>& outBuf)
+  , uint8_t* outBuf)
 {
   // get an instance of the audioresamplingstate struct
   AudioReSamplingState arState;
@@ -331,7 +332,7 @@ int AudioRenderer::audioResampling(
   }
 
   // Copy the resampled data to the output buffer
-  std::memcpy(outBuf.get(), arState.resampled_data[0], arState.resampled_data_size);
+  std::memcpy(outBuf, arState.resampled_data[0], arState.resampled_data_size);
 
   // Memory Cleanup.
   this->audioReleasePointer(arState);

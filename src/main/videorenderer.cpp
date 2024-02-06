@@ -77,7 +77,8 @@ bool VideoRenderer::init(const int& x, const int& y, const int& w, const int& h,
   }
 
   // AudioRenderer
-  m_audioRenderer.init(0 /* Audio Device Index */, m_frameContainer);
+  auto ret = m_audioRenderer.init(1 /* Audio Device Index */, m_frameContainer);
+  assert(!ret);
   m_audioRenderer.start();
 
   // RTSPController
