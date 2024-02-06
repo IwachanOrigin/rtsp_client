@@ -170,7 +170,7 @@ void RtspController::continueAfterSETUP(RTSPClient* rtspClient, int resultCode, 
       // Having successfully setup the subsession, create a data sink for it, and call "startPlaying()" on it.
       // (This will prepare the data sink to receive data; the actual flow of data from the client won't start happening until later,
       // after we've sent a RTSP "PLAY" command.)
-      subsession->sink = AudioSink::createNew(env, *subsession, rtspClient->url());
+      subsession->sink = AudioSink::createNew(env, *subsession, rtspClient->url(), m_frameContainer);
     }
     else
     {

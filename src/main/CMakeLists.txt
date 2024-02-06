@@ -1,5 +1,9 @@
 
 set(main_src
+  audiorenderer.cpp
+  audiorenderer.h
+  audioresamplingstate.cpp
+  audioresamplingstate.h
   audiosink.cpp
   audiosink.h
   basertspclient.cpp

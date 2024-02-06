@@ -76,6 +76,11 @@ bool VideoRenderer::init(const int& x, const int& y, const int& w, const int& h,
     return false;
   }
 
+  // AudioRenderer
+  m_audioRenderer.init(0 /* Audio Device Index */, m_frameContainer);
+  m_audioRenderer.start();
+
+  // RTSPController
   m_rtspController.setFrameContainer(m_frameContainer);
 
   for (auto& url : vecURL)
@@ -152,6 +157,7 @@ int VideoRenderer::render()
 
     case SDL_QUIT:
     {
+      m_audioRenderer.stop();
       m_rtspController.setStopStreaming();
       return -1;
     }

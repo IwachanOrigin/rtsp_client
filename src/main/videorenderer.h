@@ -16,6 +16,7 @@ extern "C"
 #include <SDL_mutex.h>
 }
 
+#include "audiorenderer.h"
 #include "rtspcontroller.h"
 #include "framecontainer.h"
 #include <string>
@@ -40,6 +41,7 @@ private:
   SDL_Window* m_window = nullptr;
 
   client::RtspController m_rtspController;
+  client::AudioRenderer m_audioRenderer;
   std::shared_ptr<FrameContainer> m_frameContainer = nullptr;
 
   int videoDisplay();
