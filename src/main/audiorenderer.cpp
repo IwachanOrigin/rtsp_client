@@ -1,35 +1,89 @@
 
-#include <cstring>
+#include <iostream>
+#include <string>
 #include <thread>
 #include <cassert>
 #include "audiorenderer.h"
-#include "framecontainer.h"
 
 using namespace client;
 
-#define SDL_AUDIO_BUFFER_SIZE 1024
-#define MAX_AUDIO_FRAME_SIZE  192000
-#define AV_NOSYNC_THRESHOLD   1.0
-#define AUDIO_DIFF_AVG_NB     20
-#define SAMPLE_CORRECTION_PERCENT_MAX 10
-
-AudioRenderer::AudioRenderer()
-{}
+constexpr int SDL_AUDIO_BUFFER_SIZE = 1024;
+constexpr int MAX_AUDIO_FRAME_SIZE = 192000;
+constexpr double AV_NOSYNC_THRESHOLD = 1.0;
+constexpr int AUDIO_DIFF_AVG_NB = 20;
+constexpr int SAMPLE_CORRECTION_PERCENT_MAX = 10;
 
 AudioRenderer::~AudioRenderer()
-{}
+{
+}
+
+int AudioRenderer::init(const int& outAudioDeviceIndex, std::shared_ptr<FrameContainer> frameContainer)
+{
+  if (outAudioDeviceIndex < 0)
+  {
+    return -1;
+  }
+  if (!frameContainer)
+  {
+    return -2;
+  }
+
+  m_frameContainer = frameContainer;
+
+  SDL_AudioSpec spec{0};
+  m_wants.freq = 44100; // audioCodecCtx->sample_rate
+  m_wants.format = AUDIO_S16SYS;
+  m_wants.channels = 2; // audioCodecCtx->ch_layout.nb_channels
+  m_wants.silence = 0;
+  m_wants.samples = SDL_AUDIO_BUFFER_SIZE; // 1024
+  m_wants.callback = audioCallback; // static func
+  m_wants.userdata = this; // AudioRenderer
+
+  m_sdlAudioDeviceIndex = SDL_OpenAudioDevice(SDL_GetAudioDeviceName(outAudioDeviceIndex, 0), false, &m_wants, &spec, 0);
+  assert(m_sdlAudioDeviceIndex > 0);
+  if (m_sdlAudioDeviceIndex <= 0)
+  {
+    return -3;
+  }
+
+  return 0;
+}
+
+int AudioRenderer::start()
+{
+  if (m_sdlAudioDeviceIndex <= 0)
+  {
+    return -1;
+  }
+  SDL_PauseAudioDevice(m_sdlAudioDeviceIndex, 0);
+  return 0;
+}
+
+int AudioRenderer::stop()
+{
+  if (m_sdlAudioDeviceIndex <= 0)
+  {
+    return -1;
+  }
+  SDL_PauseAudioDevice(m_sdlAudioDeviceIndex, 1);
+  return 0;
+}
+
 
 void AudioRenderer::audioCallback(void* userdata, Uint8* stream, int len)
 {
-  // Retrieve the FrameContainter
-  auto frameContainer = reinterpret_cast<FrameContainer*>(userdata);
+  // Retrieve the AudioRenderer
+  auto renderer = reinterpret_cast<AudioRenderer*>(userdata);
+  renderer->internalAudioCallback(stream, len);
+}
 
+void AudioRenderer::internalAudioCallback(Uint8* stream, int len)
+{
   double pts = 0;
 
-  if (frameContainer->sizeAudioFrameDecoded() <= 0 && frameContainer->sizeVideoFrameDecoded() <= 0)
+  if (m_frameContainer->sizeAudioFrameDecoded() <= 0 && m_frameContainer->sizeVideoFrameDecoded() <= 0)
   {
-    //auto sdlAudioDeviceID = videoState->sdlAudioDeviceID();
-    //SDL_PauseAudioDevice(sdlAudioDeviceID, 1);
+    SDL_PauseAudioDevice(m_sdlAudioDeviceIndex, 1);
     return;
   }
 
@@ -40,47 +94,45 @@ void AudioRenderer::audioCallback(void* userdata, Uint8* stream, int len)
     return;
   }
 
-  auto ret = frameContainer->popAudioFrameDecoded(frame);
+  auto ret = m_frameContainer->popAudioFrameDecoded(frame);
   if (ret < 0)
   {
     std::cerr << "" << std::endl;
     av_frame_unref(frame);
     av_frame_free(&frame);
+    return;
   }
 
-  // audio resampling
-  auto dataSize = audioResampling(
+  // Audio resampling
+  std::unique_ptr<uint8_t> audioBuf = std::make_unique<uint8_t>((MAX_AUDIO_FRAME_SIZE * 3) / 2);
+  auto dataSize = this->audioResampling(
     frame
     , AVSampleFormat::AV_SAMPLE_FMT_S16
-    , audio_buf);
+    , audioBuf);
 
-  // copy data from audio buffer to the SDL stream
+  // Copy data from audio buffer to the SDL stream
   std::memcpy(stream, (uint8_t *)audioBuf + audioBufIndex, len1);
-
 }
 
 int AudioRenderer::audioResampling(
   AVFrame* decodedAudioFrame
   , AVSampleFormat outSampleFmt
-  , uint8_t* outBuf)
+  , std::unique_ptr<uint8_t>& outBuf)
 {
   // get an instance of the audioresamplingstate struct
   AudioReSamplingState arState;
 
-  arState.init(2 /* channel_layout */);
+  arState.init(decodedAudioFrame->ch_layout.nb_channels);
   if (!arState.swr_ctx)
   {
-    printf("swr_alloc error.\n");
+    std::cerr << "swr_alloc error." << std::endl;
     return -1;
   }
-
-  // Get input audio channels
-  arState.in_channel_layout = 2; // channel_layout
 
   // Check input audio channels correctly retrieved
   if (arState.in_channel_layout <= 0)
   {
-    audioReleasePointer(arState);
+    this->audioReleasePointer(arState);
     return -1;
   }
 
@@ -103,16 +155,16 @@ int AudioRenderer::audioResampling(
   if (arState.in_nb_samples <= 0)
   {
     printf("in_nb_samples error.\n");
-    audioReleasePointer(arState);
+    this->audioReleasePointer(arState);
     return -1;
   }
 
   // Set SwrContext parameters for resampling
   av_opt_set_int(arState.swr_ctx, "in_channel_layout", arState.in_channel_layout, 0);
-  av_opt_set_int(arState.swr_ctx, "in_sample_rate", audioCodecCtx->sample_rate, 0);
-  av_opt_set_sample_fmt(arState.swr_ctx, "in_sample_fmt", audioCodecCtx->sample_fmt, 0);
+  av_opt_set_int(arState.swr_ctx, "in_sample_rate", decodedAudioFrame->sample_rate, 0);
+  av_opt_set_sample_fmt(arState.swr_ctx, "in_sample_fmt", (AVSampleFormat)decodedAudioFrame->format, 0);
   av_opt_set_int(arState.swr_ctx, "out_channel_layout", arState.out_channel_layout, 0);
-  av_opt_set_int(arState.swr_ctx, "out_sample_rate", audioCodecCtx->sample_rate, 0);
+  av_opt_set_int(arState.swr_ctx, "out_sample_rate", decodedAudioFrame->sample_rate, 0);
   av_opt_set_sample_fmt(arState.swr_ctx, "out_sample_fmt", outSampleFmt, 0);
 
   // Once all values have been set for the SwrContext, it must be initialized
@@ -120,23 +172,23 @@ int AudioRenderer::audioResampling(
   int ret = swr_init(arState.swr_ctx);
   if (ret < 0)
   {
-    printf("Failed to initialize the resampling context.\n");
-    audioReleasePointer(arState);
+    std::cerr << "Failed to initialize the resampling context." << std::endl;
+    this->audioReleasePointer(arState);
     return -1;
   }
 
   arState.max_out_nb_samples = arState.out_nb_samples = av_rescale_rnd(
     arState.in_nb_samples,
-    audioCodecCtx->sample_rate,
-    audioCodecCtx->sample_rate,
+    decodedAudioFrame->sample_rate,
+    decodedAudioFrame->sample_rate,
     AV_ROUND_UP
     );
 
   // check rescaling was successful
   if (arState.max_out_nb_samples <= 0)
   {
-    printf("av_rescale_rnd error.\n");
-    audioReleasePointer(arState);
+    std::cerr << "av_rescale_rnd error." << std::endl;
+    this->audioReleasePointer(arState);
     return -1;
   }
 
@@ -154,30 +206,30 @@ int AudioRenderer::audioResampling(
 
   if (ret < 0)
   {
-    printf("av_samples_alloc_array_and_samples() error: Could not allocate destination samples.\n");
-    audioReleasePointer(arState);
+    std::cerr << "av_samples_alloc_array_and_samples() error: Could not allocate destination samples." << std::endl;
+    this->audioReleasePointer(arState);
     return -1;
   }
 
   // retrieve output samples number taking into account the progressive delay
-  auto swrDelay = swr_get_delay(arState.swr_ctx, audioCodecCtx->sample_rate);
+  auto swrDelay = swr_get_delay(arState.swr_ctx, decodedAudioFrame->sample_rate);
   arState.out_nb_samples = av_rescale_rnd(
     swrDelay + arState.in_nb_samples
-    , audioCodecCtx->sample_rate
-    , audioCodecCtx->sample_rate
+    , decodedAudioFrame->sample_rate
+    , decodedAudioFrame->sample_rate
     , AV_ROUND_UP
     );
 
   // check output samples number was correctly retrieved
   if (arState.out_nb_samples <= 0)
   {
-    audioReleasePointer(arState);
+    this->audioReleasePointer(arState);
     return -1;
   }
 
   if (arState.out_nb_samples > arState.max_out_nb_samples)
   {
-    // free memory block and set pointer to NULL
+    // Free memory block and set pointer to NULL
     av_free(arState.resampled_data[0]);
 
     // Allocate a samples buffer for out_nb_samples samples
@@ -190,64 +242,61 @@ int AudioRenderer::audioResampling(
       , 1
       );
 
-    // check samples buffer correctly allocated
+    // Check samples buffer correctly allocated
     if (ret < 0)
     {
       std::cerr << "av_samples_alloc failed." << std::endl;
-      audioReleasePointer(arState);
+      this->audioReleasePointer(arState);
       return -1;
     }
     arState.max_out_nb_samples = arState.out_nb_samples;
   }
 
-  if (arState.swr_ctx)
+  // 
+  if (!arState.swr_ctx)
   {
-    // do the actual audio data resampling
-    ret = swr_convert(
-      arState.swr_ctx
-      , arState.resampled_data
-      , arState.out_nb_samples
-      , (const uint8_t **) decodedAudioFrame->data
-      , decodedAudioFrame->nb_samples);
-
-    // check audio conversion was successful
-    if (ret < 0)
-    {
-      std::cerr << "swr_convert_error." << std::endl;
-      audioReleasePointer(arState);
-      return -1;
-    }
-
-    // Get the required buffer size for the given audio parameters
-    arState.resampled_data_size = av_samples_get_buffer_size(
-      &arState.out_linesize
-      , arState.out_nb_channels
-      , ret
-      , outSampleFmt
-      , 1);
-
-    // check audio buffer size
-    if (arState.resampled_data_size < 0)
-    {
-      printf("av_samples_get_buffer_size error.\n");
-      audioReleasePointer(arState);
-      return -1;
-    }
-  }
-  else
-  {
-    printf("swr_ctx null error.\n");
-    audioReleasePointer(arState);
+    std::cerr << "swr_ctx null error." << std::endl;
+    this->audioReleasePointer(arState);
     return -1;
   }
 
-  // copy the resampled data to the output buffer
-  std::memcpy(outBuf, arState.resampled_data[0], arState.resampled_data_size);
+  // Do the actual audio data resampling
+  ret = swr_convert(
+    arState.swr_ctx
+    , arState.resampled_data
+    , arState.out_nb_samples
+    , (const uint8_t **) decodedAudioFrame->data
+    , decodedAudioFrame->nb_samples);
 
-  /*
-   * Memory Cleanup.
-   */
-  audioReleasePointer(arState);
+  // Check audio conversion was successful
+  if (ret < 0)
+  {
+    std::cerr << "swr_convert error." << std::endl;
+    this->audioReleasePointer(arState);
+    return -1;
+  }
+
+  // Get the required buffer size for the given audio parameters
+  arState.resampled_data_size = av_samples_get_buffer_size(
+    &arState.out_linesize
+    , arState.out_nb_channels
+    , ret
+    , outSampleFmt
+    , 1);
+
+  // Check audio buffer size
+  if (arState.resampled_data_size < 0)
+  {
+    std::cerr << "av_samples_get_buffer_size error." << std::endl;
+    this->audioReleasePointer(arState);
+    return -1;
+  }
+
+  // Copy the resampled data to the output buffer
+  std::memcpy(outBuf.get(), arState.resampled_data[0], arState.resampled_data_size);
+
+  // Memory Cleanup.
+  this->audioReleasePointer(arState);
 
   return arState.resampled_data_size;
 }
@@ -270,3 +319,4 @@ void AudioRenderer::audioReleasePointer(AudioReSamplingState& arState)
     swr_free(&arState.swr_ctx);
   }
 }
+

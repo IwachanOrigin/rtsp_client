@@ -21,7 +21,7 @@ AudioReSamplingState::~AudioReSamplingState()
 {
 }
 
-void AudioReSamplingState::init(uint64_t channel_layout)
+void AudioReSamplingState::init(const uint64_t& channel_layout)
 {
   swr_ctx = swr_alloc();
   in_channel_layout = channel_layout;

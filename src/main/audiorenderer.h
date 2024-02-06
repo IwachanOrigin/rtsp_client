@@ -2,9 +2,8 @@
 #ifndef AUDIO_RENDERER_H_
 #define AUDIO_RENDERER_H_
 
-#include <iostream>
-#include <string>
 #include "audioresamplingstate.h"
+#include "framecontainer.h"
 
 extern "C"
 {
@@ -22,12 +21,26 @@ namespace client
 class AudioRenderer
 {
 public:
-  explicit AudioRenderer();
+  explicit AudioRenderer() = default;
   ~AudioRenderer();
 
+  int init(const int& outAudioDeviceIndex, std::shared_ptr<FrameContainer> frameContainer);
+  int start();
+  int stop();
+
+private:
+  std::shared_ptr<FrameContainer> m_frameContainer = nullptr;
+  int m_sdlAudioDeviceIndex = -1;
+  SDL_AudioSpec m_wants{0};
+  
+
+  // Callback from SDL2
   static void audioCallback(void* userdata, Uint8* stream, int len);
-  static int audioResampling(AVFrame* decodedAudioFrame, AVSampleFormat outSampleFmt, uint8_t* outBuf);
-  static void audioReleasePointer(AudioReSamplingState& arState);
+
+  // Callback from audioCallback func.
+  void internalAudioCallback(Uint8* stream, int len);
+  int audioResampling(AVFrame* decodedAudioFrame, AVSampleFormat outSampleFmt, std::unique_ptr<uint8_t>& outBuf);
+  void audioReleasePointer(AudioReSamplingState& arState);
 };
 
 }

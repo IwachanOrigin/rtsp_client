@@ -16,7 +16,7 @@ public:
   explicit AudioReSamplingState();
   ~AudioReSamplingState();
 
-  void init(uint64_t channel_layout);
+  void init(const uint64_t& channel_layout);
 
   SwrContext* swr_ctx;
   int64_t in_channel_layout;
