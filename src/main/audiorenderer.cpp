@@ -1,7 +1,5 @@
 
 #include <iostream>
-#include <string>
-#include <thread>
 #include <cassert>
 #include "audiorenderer.h"
 
@@ -79,8 +77,6 @@ void AudioRenderer::audioCallback(void* userdata, Uint8* stream, int len)
 
 void AudioRenderer::internalAudioCallback(Uint8* stream, int len)
 {
-  double pts = 0;
-
   if (m_frameContainer->sizeAudioFrameDecoded() <= 0 && m_frameContainer->sizeVideoFrameDecoded() <= 0)
   {
     SDL_PauseAudioDevice(m_sdlAudioDeviceIndex, 1);
@@ -94,24 +90,66 @@ void AudioRenderer::internalAudioCallback(Uint8* stream, int len)
     return;
   }
 
-  auto ret = m_frameContainer->popAudioFrameDecoded(frame);
-  if (ret < 0)
-  {
-    std::cerr << "" << std::endl;
-    av_frame_unref(frame);
-    av_frame_free(&frame);
-    return;
-  }
-
-  // Audio resampling
+  unsigned int audioBufferIndex = 0;
+  int audioBufferSize = 0;
+  int len1 = 0;
+  const int audioArrayBufferSize = (MAX_AUDIO_FRAME_SIZE * 3) / 2;
   std::unique_ptr<uint8_t> audioBuf = std::make_unique<uint8_t>((MAX_AUDIO_FRAME_SIZE * 3) / 2);
-  auto dataSize = this->audioResampling(
-    frame
-    , AVSampleFormat::AV_SAMPLE_FMT_S16
-    , audioBuf);
 
-  // Copy data from audio buffer to the SDL stream
-  std::memcpy(stream, (uint8_t *)audioBuf + audioBufIndex, len1);
+  while(len > 0)
+  {
+    if (audioBufferIndex >= audioBufferSize)
+    {
+      auto ret = m_frameContainer->popAudioFrameDecoded(frame);
+      if (ret < 0)
+      {
+        std::cerr << "Failed get the AVFrame from the audio decoded queue." << std::endl;
+        av_frame_unref(frame);
+        av_frame_free(&frame);
+        return;
+      }
+
+      // Audio resampling
+      auto audioSize = this->audioResampling(
+        frame
+        , AVSampleFormat::AV_SAMPLE_FMT_S16
+        , audioBuf);
+
+      if (audioSize < 0)
+      {
+        // Output silence
+        audioBufferSize = 1024;
+        // Clear memory
+        std::memset(audioBuf.get(), 0, audioBufferSize);
+      }
+      else
+      {
+        // NOTE: If the audio side is to be adjusted to the video or external clock,
+        // the synchronization process must be called and calculated here.
+        audioBufferSize = audioSize;
+      }
+      audioBufferIndex = 0;
+    }
+
+    len1 = audioBufferSize - audioBufferIndex;
+    if (len1 > len)
+    {
+      len1 = len;
+    }
+
+    // Copy data from audio buffer to the SDL stream
+    std::memcpy(stream, audioBuf.get() + audioBufferIndex, len1);
+
+    // Calculate the remaining length that needs to be written to the stream.
+    len -= len1;
+    // Move to the address of the next stream pointer to be written.
+    stream += len1;
+    // Update the audio buffer index. This is the next address to be written.
+    audioBufferIndex += len1;
+
+    av_frame_unref(frame);
+  }
+  av_frame_free(&frame);
 }
 
 int AudioRenderer::audioResampling(
